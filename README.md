@@ -1,6 +1,9 @@
 # Luauni
 A Luau bytecode interpreter programmed with the intention of being used for a Unity port of a Roblox game.
 
+## Note
+Luauni is still in development and has limited support, work is being done!
+
 ## Support
 This is a list of all the opcodes Luauni currently supports.<br>
 If there is a warning icon then it's either implemented inaccurately or unstable.<br>
