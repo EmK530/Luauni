@@ -64,4 +64,17 @@ public static class Luau
     public static uint INSN_C(Instruction insn) => (insn >> 24) & 0xFF;
     public static int INSN_D(Instruction insn) => (int)((int)insn >> 16);
     public static int INSN_E(Instruction insn) => (int)(insn >> 8);
+    public static bool EQUAL(object v1, object v2)
+    {
+        Type type = v1.GetType();
+        if (type == typeof(double))
+        {
+            return (double)v1 == (double)v2;
+        } else if (type == typeof(string)) {
+            return (string)v1 == (string)v2;
+        } else
+        {
+            return v1 == v2;
+        }
+    }
 }
