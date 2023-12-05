@@ -1,4 +1,4 @@
-﻿#pragma warning disable CS8600
+#pragma warning disable CS8600
 #pragma warning disable CS8602
 #pragma warning disable CS8604
 #pragma warning disable CS8605
@@ -410,14 +410,13 @@ public class Luauni
                         p.registers[regId + 2] = idx;
                         if (step > 0 ? idx <= limit : limit <= idx)
                         {
-                            p.instpos -= (65535-Luau.INSN_D(inst)-1);
+                            p.instpos += Luau.INSN_D(inst);
                         }
                     }
                     break;
                 case LuauOpcode.LOP_GETGLOBAL:
                     {
                         uint aux = getNext(ref p);
-
                         p.registers[Luau.INSN_A(inst)] = GetGlobal((string)p.k[aux]);
                     }
                     break;
@@ -426,6 +425,7 @@ public class Luauni
                     break;
                 case LuauOpcode.LOP_JUMP:
                 case LuauOpcode.LOP_JUMPBACK:
+                    print(Luau.INSN_D(inst));
                     p.instpos += Luau.INSN_D(inst);
                     break;
                 case LuauOpcode.LOP_JUMPIF:
