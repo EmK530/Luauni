@@ -29,7 +29,7 @@ If there is a warning icon then it's either implemented inaccurately or unstable
 ❌ `LOP_ADDK` `LOP_SUBK` `LOP_MULK` `LOP_DIVK` `LOP_MODK` `LOP_POWK`<br>
 ❌ `LOP_AND` `LOP_OR`<br>
 ❌ `LOP_ANDK` `LOP_ORK`<br>
-❌ `LOP_CONCAT`<br>
+✅ `LOP_CONCAT`<br>
 ❌ `LOP_NOT` `LOP_MINUS` `LOP_LENGTH`<br>
 ⚠️ `LOP_NEWTABLE`<br>
 ❌ `LOP_DUPTABLE`<br>
