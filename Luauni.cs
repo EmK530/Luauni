@@ -384,6 +384,18 @@ public class Luauni
                         }
                         break;
                     }
+                case LuauOpcode.LOP_CONCAT:
+                    {
+                        string output = "";
+                        uint regStart = Luau.INSN_B(inst);
+                        uint regEnd = Luau.INSN_C(inst);
+                        for(int i = 0; i < regEnd-regStart+1; i++)
+                        {
+                            output += p.registers[regStart + i].ToString();
+                        }
+                        p.registers[Luau.INSN_A(inst)] = output;
+                    }
+                    break;
                 case LuauOpcode.LOP_DIV:
                     {
                         double rg1 = (double)p.registers[Luau.INSN_B(inst)];
