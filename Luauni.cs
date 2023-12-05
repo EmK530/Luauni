@@ -448,14 +448,14 @@ public class Luauni
                     }
                     break;
                 case LuauOpcode.LOP_JUMPIFEQ:
-                    if (p.registers[Luau.INSN_A(inst)]==p.registers[getNext(ref p)])
+                    if (Luau.EQUAL(p.registers[Luau.INSN_A(inst)],p.registers[getNext(ref p)]))
                     {
                         debug("JUMPIFEQ PASS");
                         p.instpos += Luau.INSN_D(inst) - 1;
                     }
                     break;
                 case LuauOpcode.LOP_JUMPIFNOTEQ:
-                    if (p.registers[Luau.INSN_A(inst)] != p.registers[getNext(ref p)])
+                    if (!Luau.EQUAL(p.registers[Luau.INSN_A(inst)], p.registers[getNext(ref p)]))
                     {
                         debug("JUMPIFNOTEQ PASS");
                         p.instpos += Luau.INSN_D(inst) - 1;
