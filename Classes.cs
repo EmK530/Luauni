@@ -1,4 +1,4 @@
-﻿global using Instruction = System.UInt32;
+global using Instruction = System.UInt32;
 using System.Diagnostics;
 
 public static class Essentials
@@ -62,6 +62,6 @@ public static class Luau
     public static uint INSN_A(Instruction insn) => (insn >> 8) & 0xFF;
     public static uint INSN_B(Instruction insn) => (insn >> 16) & 0xFF;
     public static uint INSN_C(Instruction insn) => (insn >> 24) & 0xFF;
-    public static int INSN_D(Instruction insn) => (int)(insn >> 16);
+    public static int INSN_D(Instruction insn) => (int)((int)insn >> 16);
     public static int INSN_E(Instruction insn) => (int)(insn >> 8);
 }
