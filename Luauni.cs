@@ -425,7 +425,6 @@ public class Luauni
                     break;
                 case LuauOpcode.LOP_JUMP:
                 case LuauOpcode.LOP_JUMPBACK:
-                    print(Luau.INSN_D(inst));
                     p.instpos += Luau.INSN_D(inst);
                     break;
                 case LuauOpcode.LOP_JUMPIF:
