@@ -13,6 +13,7 @@ using System.ComponentModel;
 using System.Runtime.ConstrainedExecution;
 using System.ComponentModel.Design;
 using System.Collections.Generic;
+using System.Reflection;
 
 public class Luauni
 {
@@ -22,7 +23,7 @@ public class Luauni
     string[] stringtable;
     int[] protopos;
     Proto[] protos;
-    object lastreturn;
+    object[] lastreturn = null;
     int mainprotoId;
     Proto mainproto;
     int instPos = -1;
@@ -38,7 +39,35 @@ public class Luauni
     {
         file = File.OpenRead(filepath);
         globals = new Dictionary<string, object>();
-        SetGlobal("print", (Action<object[]>)CG.print);
+        IterGlobals(typeof(CG), globals, "", true);
+        //SetGlobal("print", (Action<object[]>)CG.print);
+    }
+
+    private void IterGlobals(Type i, Dictionary<string, object> contain, string path, bool top)
+    {
+        foreach(Type t in i.GetNestedTypes())
+        {
+            contain[t.Name] = new Dictionary<string, object>();
+            string path2 = path;
+            if (!top)
+            {
+                path2 += ".";
+            }
+            path2 += t.Name;
+            IterGlobals(t, (Dictionary<string, object>)contain[t.Name], path2, false);
+        }
+        foreach(MethodInfo t in i.GetMethods(BindingFlags.Static | BindingFlags.Public).Cast<MethodInfo>())
+        {
+            debug("Binding global '" + path + (top ? "" : ".") + t.Name + "'");
+            if (t.ReturnType == typeof(void))
+            {
+                contain[t.Name] = (Action<object[]>)t.CreateDelegate(typeof(Action<object[]>));
+            }
+            else
+            {
+                contain[t.Name] = (Func<object[], object[]>)t.CreateDelegate(typeof(Func<object[], object[]>));
+            }
+        }
     }
 
     private void SetGlobal(string name, object value)
@@ -266,124 +295,6 @@ public class Luauni
                         p.registers[Luau.INSN_A(inst)] = rg1 + rg2;
                     }
                     break;
-                case LuauOpcode.LOP_CALL:
-                    {
-                        uint reg = Luau.INSN_A(inst);
-                        int args = ((int)Luau.INSN_B(inst)) - 1;
-                        int returns = ((int)Luau.INSN_C(inst)) - 1;
-                        if (p.registers[reg].GetType() == typeof(Proto))
-                        {
-                            debug("We're calling a proto");
-                            Proto target = (Proto)p.registers[reg];
-                            target.registers = new object[255];
-                            switch (args)
-                            {
-                                case -1:
-                                    {
-                                        if (p.lastReturnCount == 1)
-                                        {
-                                            debug("Passing 1 argument from last return");
-                                            target.registers[0] = p.lastReturn;
-                                        }
-                                        else
-                                        {
-                                            debug("Passing " + p.lastReturnCount + " arguments from last return");
-                                            List<object> returnList = (List<object>)p.lastReturn;
-                                            for (int i = 0; i < p.lastReturnCount; i++)
-                                            {
-                                                target.registers[i] = returnList[i];
-                                            }
-                                        }
-                                    }
-                                    break;
-                                case 0:
-                                    break;
-                                default:
-                                    {
-                                        debug("Passing " + args + " arguments");
-                                        for (int i = 0; i < args; i++)
-                                        {
-                                            target.registers[i] = p.registers[reg + i + 1];
-                                        }
-                                    }
-                                    break;
-                            }
-                            (object?, int) callData = executeProto(ref target);
-                            p.lastReturn = callData.Item1;
-                            p.lastReturnCount = callData.Item2;
-                            debug("Written lastreturn");
-                            if (args != 0 && p.lastReturnCount != 0)
-                            {
-                                int tern = (args == -1 ? p.lastReturnCount : args);
-                                if (tern == 1)
-                                {
-                                    debug("Updating 1 register from return");
-                                    p.registers[reg] = p.lastReturn;
-                                }
-                                else
-                                {
-                                    debug("Updating " + tern + " registers from return");
-                                    List<object> ret = (List<object>)p.lastReturn;
-                                    for (int i = 0; i < p.lastReturnCount; i++)
-                                    {
-                                        if (i + 1 >= ret.Count)
-                                        {
-                                            p.registers[reg + i] = null;
-                                        }
-                                        else
-                                        {
-                                            p.registers[reg + i] = ret[i];
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                        else
-                        {
-                            //all non-protos are assumed to only return one thing, void or anything else.
-                            debug("We're calling a non-proto");
-                            if (returns != 0)
-                            {
-                                error("Tried calling a non-proto that did not expect 0 return values.");
-                                return (null, 0);
-                            }
-                            Action<object[]> target = (Action<object[]>)p.registers[reg];
-                            switch (args)
-                            {
-                                case -1:
-                                    {
-                                        debug("Passing arguments from last return");
-                                        if (p.lastReturnCount == 0)
-                                        {
-                                            ((Action)p.registers[reg])();
-                                        }
-                                        else if (p.lastReturnCount == 1)
-                                        {
-                                            target(new object[1] { p.lastReturn });
-                                        }
-                                        else
-                                        {
-                                            target(((List<object>)p.lastReturn).ToArray());
-                                        }
-                                    }
-                                    break;
-                                case 0:
-                                    break;
-                                default:
-                                    {
-                                        debug("Passing " + args + " arguments");
-                                        object[] passArgs = new object[args];
-                                        for (int i = 0; i < args; i++)
-                                        {
-                                            passArgs[i] = p.registers[reg + i + 1];
-                                        }
-                                        target(passArgs);
-                                    }
-                                    break;
-                            }
-                        }
-                        break;
-                    }
                 case LuauOpcode.LOP_CONCAT:
                     {
                         string output = "";
@@ -435,6 +346,10 @@ public class Luauni
                 case LuauOpcode.LOP_GETTABLE:
                     //big lmao
                     p.registers[Luau.INSN_A(inst)] = ((object[])p.registers[Luau.INSN_B(inst)])[Convert.ToInt32((double)p.registers[Luau.INSN_C(inst)])-1];
+                    break;
+                case LuauOpcode.LOP_GETTABLEKS:
+                    //big lmao v2
+                    p.registers[Luau.INSN_A(inst)] = ((Dictionary<string, object>)p.registers[Luau.INSN_B(inst)])[(string)p.k[getNext(ref p)]];
                     break;
                 case LuauOpcode.LOP_JUMP:
                 case LuauOpcode.LOP_JUMPBACK:
@@ -501,6 +416,9 @@ public class Luauni
                     break;
                 case LuauOpcode.LOP_LOADNIL:
                     p.registers[Luau.INSN_A(inst)] = null;
+                    break;
+                case LuauOpcode.LOP_MINUS:
+                    p.registers[Luau.INSN_A(inst)] = -(double)p.registers[Luau.INSN_B(inst)];
                     break;
                 case LuauOpcode.LOP_MOD:
                     {
@@ -589,6 +507,212 @@ public class Luauni
                         p.registers[Luau.INSN_A(inst)] = rg1 - rg2;
                     }
                     break;
+                case LuauOpcode.LOP_CALL:
+                    {
+                        uint reg = Luau.INSN_A(inst);
+                        int args = ((int)Luau.INSN_B(inst)) - 1;
+                        int returns = ((int)Luau.INSN_C(inst)) - 1;
+                        Type regType = p.registers[reg].GetType();
+                        if (regType == typeof(Proto))
+                        {
+                            debug("We're calling a proto");
+                            Proto target = (Proto)p.registers[reg];
+                            target.registers = new object[255];
+                            switch (args)
+                            {
+                                case -1:
+                                    {
+                                        if (p.lastReturnCount == 1)
+                                        {
+                                            debug("Passing 1 argument from last return");
+                                            target.registers[0] = p.lastReturn;
+                                        }
+                                        else
+                                        {
+                                            debug("Passing " + p.lastReturnCount + " arguments from last return");
+                                            List<object> returnList = (List<object>)p.lastReturn;
+                                            for (int i = 0; i < p.lastReturnCount; i++)
+                                            {
+                                                target.registers[i] = returnList[i];
+                                            }
+                                        }
+                                    }
+                                    break;
+                                case 0:
+                                    break;
+                                default:
+                                    {
+                                        debug("Passing " + args + " arguments");
+                                        for (int i = 0; i < args; i++)
+                                        {
+                                            target.registers[i] = p.registers[reg + i + 1];
+                                        }
+                                    }
+                                    break;
+                            }
+                            (object?, int) callData = executeProto(ref target);
+                            p.lastReturn = callData.Item1;
+                            p.lastReturnCount = callData.Item2;
+                            debug("Written lastreturn");
+                            if (args != 0 && p.lastReturnCount != 0)
+                            {
+                                int tern = (args == -1 ? p.lastReturnCount : args);
+                                if (tern == 1)
+                                {
+                                    debug("Updating 1 register from return");
+                                    p.registers[reg] = p.lastReturn;
+                                }
+                                else
+                                {
+                                    debug("Updating " + tern + " registers from return");
+                                    List<object> ret = (List<object>)p.lastReturn;
+                                    for (int i = 0; i < p.lastReturnCount; i++)
+                                    {
+                                        if (i + 1 >= ret.Count)
+                                        {
+                                            p.registers[reg + i] = null;
+                                        }
+                                        else
+                                        {
+                                            p.registers[reg + i] = ret[i];
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        else if (regType == typeof(Action<object[]>))
+                        {
+                            //all non-protos are assumed to only return one thing, void or anything else.
+                            debug("We're calling an action");
+                            if (returns != 0)
+                            {
+                                warn("Action function call expected " + returns + " return value" + (returns == 1 ? "" : "s") + ", registers will be nullified after call.");
+                            }
+                            Action<object[]> target = (Action<object[]>)p.registers[reg];
+                            switch (args)
+                            {
+                                case -1:
+                                    {
+                                        debug("Passing arguments from last return");
+                                        if (p.lastReturnCount == 0)
+                                        {
+                                            target(new object[0]);
+                                        }
+                                        else if (p.lastReturnCount == 1)
+                                        {
+                                            target(new object[1] { p.lastReturn });
+                                        }
+                                        else
+                                        {
+                                            target(((List<object>)p.lastReturn).ToArray());
+                                        }
+                                    }
+                                    break;
+                                case 0:
+                                    target(new object[0]);
+                                    break;
+                                default:
+                                    {
+                                        debug("Passing " + args + " arguments");
+                                        object[] passArgs = new object[args];
+                                        for (int i = 0; i < args; i++)
+                                        {
+                                            passArgs[i] = p.registers[reg + i + 1];
+                                        }
+                                        target(passArgs);
+                                    }
+                                    break;
+                            }
+                            if (returns != 0)
+                            {
+                                for (int i = 0; i < returns; i++)
+                                {
+                                    p.registers[reg + i] = null;
+                                }
+                            }
+                            p.lastReturn = null;
+                            p.lastReturnCount = 0;
+                        }
+                        else if (regType == typeof(Func<object[], object[]>))
+                        {
+                            debug("We're calling a func");
+                            Func<object[], object[]> target = (Func<object[], object[]>)p.registers[reg];
+                            object[] callData = new object[0];
+                            switch (args)
+                            {
+                                case -1:
+                                    {
+                                        debug("Passing arguments from last return");
+                                        if (p.lastReturnCount == 0)
+                                        {
+                                            callData = target(new object[0]);
+                                        }
+                                        else if (p.lastReturnCount == 1)
+                                        {
+                                            callData = target(new object[1] { p.lastReturn });
+                                        }
+                                        else
+                                        {
+                                            callData = target(((List<object>)p.lastReturn).ToArray());
+                                        }
+                                    }
+                                    break;
+                                case 0:
+                                    callData = target(new object[0]);
+                                    break;
+                                default:
+                                    {
+                                        debug("Passing " + args + " arguments");
+                                        object[] passArgs = new object[args];
+                                        for (int i = 0; i < args; i++)
+                                        {
+                                            passArgs[i] = p.registers[reg + i + 1];
+                                        }
+                                        callData = target(passArgs);
+                                    }
+                                    break;
+                            }
+                            List<object> newret = new List<object>();
+                            int tern = (returns == -1 ? callData.Length : returns);
+                            debug("Updating "+tern+" register"+(tern==1?"":"s")+" from return");
+                            for (int i = 0; i < tern; i++) {
+                                if (callData.Length > i)
+                                {
+                                    newret.Add(callData[i]);
+                                    p.registers[reg + i] = callData[i];
+                                } else
+                                {
+                                    newret.Add(null);
+                                    p.registers[reg + i] = null;
+                                }
+                            }
+                            switch (tern)
+                            {
+                                case 0:
+                                    p.lastReturn = null;
+                                    break;
+                                case 1:
+                                    p.lastReturn = newret[0];
+                                    break;
+                                default:
+                                    p.lastReturn = newret.ToArray();
+                                    break;
+                            }
+                            p.lastReturnCount = tern;
+                        }
+                        else
+                        {
+                            error("Tried calling a register which is not a valid type, doing nothing.");
+                            if (returns != 0)
+                            {
+                                for (int i = 0; i < returns; i++)
+                                {
+                                    p.registers[reg + i] = null;
+                                }
+                            }
+                        }
+                        break;
+                    }
                 default:
                     error("Unsupported instruction: " + Enum.GetName(typeof(LuauOpcode), opcode));
                     return (null, 0);

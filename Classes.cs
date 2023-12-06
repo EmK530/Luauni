@@ -77,4 +77,45 @@ public static class Luau
             return v1 == v2;
         }
     }
+    public static ulong randstate = 0;
+    public static uint pcg32_random()
+    {
+        ulong oldstate = randstate;
+        randstate = oldstate * 6364136223846793005UL + (105 | 1);
+        uint xorshifted = (uint)(((oldstate >> 18) ^ oldstate) >> 27);
+        uint rot = (uint)(oldstate >> 59);
+        return (xorshifted >> (int)rot) | (xorshifted << (-(int)rot & 31));
+    }
+    public static void pcg32_seed(ulong seed)
+    {
+        randstate = 0;
+        pcg32_random();
+        randstate += seed;
+        pcg32_random();
+    }
+}
+
+public static class lfunc
+{
+    public static Proto luaF_newproto()
+    {
+        Proto f = new Proto();
+        f.maxstacksize = 0;
+        f.numparams = 0;
+        f.nups = 0;
+        f.is_vararg = 0;
+        f.k = null;
+        f.sizek = 0;
+        f.p = null;
+        f.sizep = 0;
+        f.code = null;
+        f.sizecode = 0;
+        f.flags = 0;
+        f.codeentry = null;
+        f.registers = new object[255];
+        f.instpos = -1;
+        f.lastReturn = null;
+        f.lastReturnCount = 0;
+        return f;
+    }
 }
