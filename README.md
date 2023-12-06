@@ -24,8 +24,7 @@ If there is a warning icon then it's either implemented inaccurately or unstable
 ✅ `LOP_JUMP` `LOP_JUMPBACK`<br>
 ✅ `LOP_JUMPIF` `LOP_JUMPIFNOT` `LOP_JUMPIFEQ` `LOP_JUMPIFLT` `LOP_JUMPIFNOTEQ` `LOP_JUMPIFNOTLT`<br>
 ❌ `LOP_JUMPIFLE` `LOP_JUMPIFNOTLE`<br>
-✅ `LOP_ADD` `LOP_SUB` `LOP_MUL` `LOP_DIV`<br>
-❌ `LOP_MOD` `LOP_POW`<br>
+✅ `LOP_ADD` `LOP_SUB` `LOP_MUL` `LOP_DIV` `LOP_MOD` `LOP_POW`<br>
 ❌ `LOP_ADDK` `LOP_SUBK` `LOP_MULK` `LOP_DIVK` `LOP_MODK` `LOP_POWK`<br>
 ❌ `LOP_AND` `LOP_OR`<br>
 ❌ `LOP_ANDK` `LOP_ORK`<br>
