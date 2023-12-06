@@ -433,7 +433,8 @@ public class Luauni
                     }
                     break;
                 case LuauOpcode.LOP_GETTABLE:
-                    p.registers[Luau.INSN_A(inst)] = ((object[])p.registers[Luau.INSN_B(inst)])[Luau.INSN_C(inst)-2];
+                    //big lmao
+                    p.registers[Luau.INSN_A(inst)] = ((object[])p.registers[Luau.INSN_B(inst)])[Convert.ToInt32((double)p.registers[Luau.INSN_C(inst)]-1d)];
                     break;
                 case LuauOpcode.LOP_JUMP:
                 case LuauOpcode.LOP_JUMPBACK:
@@ -576,6 +577,10 @@ public class Luauni
                             reg[aux + i - 1] = p.registers[src + i]; // minus one on reg write because lua is WEIRD and starts indexes on 1 and not 0
                         }
                     }
+                    break;
+                case LuauOpcode.LOP_SETTABLE:
+                    //big lmao 2 electric boogaloo
+                    ((object[])p.registers[Luau.INSN_B(inst)])[Convert.ToInt32((double)p.registers[Luau.INSN_C(inst)] - 1d)] = p.registers[Luau.INSN_A(inst)];
                     break;
                 case LuauOpcode.LOP_SUB:
                     {
