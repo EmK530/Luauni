@@ -38,7 +38,9 @@ public class Luauni
     {
         file = File.OpenRead(filepath);
         globals = new Dictionary<string, object>();
+        Luau.SetupGlobals();
         SetGlobal("print", (Action<object[]>)CG.print);
+        SetGlobal("math", Luau.math);
     }
 
     private void SetGlobal(string name, object value)
@@ -435,6 +437,12 @@ public class Luauni
                 case LuauOpcode.LOP_GETTABLE:
                     p.registers[Luau.INSN_A(inst)] = ((object[])p.registers[Luau.INSN_B(inst)])[Luau.INSN_C(inst)-2];
                     break;
+                case LuauOpcode.LOP_GETTABLEKS:
+                    {
+                        uint aux = getNext(ref p);
+                        
+                    }
+                    break;
                 case LuauOpcode.LOP_JUMP:
                 case LuauOpcode.LOP_JUMPBACK:
                     p.instpos += Luau.INSN_D(inst);
@@ -501,6 +509,13 @@ public class Luauni
                 case LuauOpcode.LOP_LOADNIL:
                     p.registers[Luau.INSN_A(inst)] = null;
                     break;
+                case LuauOpcode.LOP_MOD:
+                    {
+                        double rg1 = (double)p.registers[Luau.INSN_B(inst)];
+                        double rg2 = (double)p.registers[Luau.INSN_C(inst)];
+                        p.registers[Luau.INSN_A(inst)] = rg1 % rg2;
+                    }
+                    break;
                 case LuauOpcode.LOP_MOVE:
                     p.registers[Luau.INSN_A(inst)] = p.registers[Luau.INSN_B(inst)];
                     break;
@@ -517,6 +532,13 @@ public class Luauni
                 case LuauOpcode.LOP_NEWTABLE:
                     //oversimplified as fuck, watch out
                     p.registers[Luau.INSN_A(inst)] = new object[getNext(ref p)];
+                    break;
+                case LuauOpcode.LOP_POW:
+                    {
+                        double rg1 = (double)p.registers[Luau.INSN_B(inst)];
+                        double rg2 = (double)p.registers[Luau.INSN_C(inst)];
+                        p.registers[Luau.INSN_A(inst)] = Math.Pow(rg1, rg2);
+                    }
                     break;
                 case LuauOpcode.LOP_PREPVARARGS:
                     warn("Skipped opcode LOP_PREPVARARGS");
