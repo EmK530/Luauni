@@ -15,8 +15,8 @@ If there is a warning icon then it's either implemented inaccurately or unstable
 ✅ `LOP_GETGLOBAL` `LOP_SETGLOBAL`<br>
 ❌ `LOP_GETUPVAL` `LOP_SETUPVAL` `LOP_CLOSEUPVALS`<br>
 ❌ `LOP_GETIMPORT`<br>
-✅ `LOP_GETTABLE` `LOP_SETTABLE`<br>
-❌ `LOP_GETTABLEKS` `LOP_SETTABLEKS` `LOP_GETTABLEN` `LOP_SETTABLEN`<br>
+✅ `LOP_GETTABLE` `LOP_SETTABLE` `LOP_GETTABLEKS`<br>
+❌ `LOP_SETTABLEKS` `LOP_GETTABLEN` `LOP_SETTABLEN`<br>
 ⚠️ `LOP_NEWCLOSURE`<br>
 ❌ `LOP_NAMECALL`<br>
 ✅ `LOP_CALL`<br>
@@ -29,7 +29,8 @@ If there is a warning icon then it's either implemented inaccurately or unstable
 ❌ `LOP_AND` `LOP_OR`<br>
 ❌ `LOP_ANDK` `LOP_ORK`<br>
 ✅ `LOP_CONCAT`<br>
-❌ `LOP_NOT` `LOP_MINUS` `LOP_LENGTH`<br>
+✅ `LOP_MINUS`<br>
+❌ `LOP_NOT` `LOP_LENGTH`<br>
 ✅ `LOP_NEWTABLE`<br>
 ❌ `LOP_DUPTABLE`<br>
 ✅ `LOP_SETLIST`<br>
