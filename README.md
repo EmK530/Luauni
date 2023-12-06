@@ -4,7 +4,7 @@ A Luau bytecode interpreter programmed with the intention of being used for a Un
 ## Note
 Luauni is still in development and has limited support, work is being done!
 
-## Support
+## Opcode Support
 This is a list of all the opcodes Luauni currently supports.<br>
 If there is a warning icon then it's either implemented inaccurately or unstable.<br>
 ❌ `LOP_NOP`<br>
@@ -49,3 +49,8 @@ If there is a warning icon then it's either implemented inaccurately or unstable
 ❌ `LOP_SUBRK` `LOP_DIVRK`<br>
 ❌ `LOP_JUMPXEQKNIL` `LOP_JUMPXEQKB` `LOP_JUMPXEQKN` `LOP_JUMPXEQKS`<br>
 ❌ `LOP_IDIV` `LOP_IDIVK`<br>
+
+## Global Support
+This is a list of all the globals Luauni currently supports:<br>
+`math` <b>(87%)</b> | Missing: `math.fmod` `math.frexp` `math.modf` `math.noise`
+`print`<br>
