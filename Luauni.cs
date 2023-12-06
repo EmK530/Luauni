@@ -434,7 +434,7 @@ public class Luauni
                     break;
                 case LuauOpcode.LOP_GETTABLE:
                     //big lmao
-                    p.registers[Luau.INSN_A(inst)] = ((object[])p.registers[Luau.INSN_B(inst)])[Convert.ToInt32((double)p.registers[Luau.INSN_C(inst)]-1d)];
+                    p.registers[Luau.INSN_A(inst)] = ((object[])p.registers[Luau.INSN_B(inst)])[Convert.ToInt32((double)p.registers[Luau.INSN_C(inst)])-1];
                     break;
                 case LuauOpcode.LOP_JUMP:
                 case LuauOpcode.LOP_JUMPBACK:
@@ -580,7 +580,7 @@ public class Luauni
                     break;
                 case LuauOpcode.LOP_SETTABLE:
                     //big lmao 2 electric boogaloo
-                    ((object[])p.registers[Luau.INSN_B(inst)])[Convert.ToInt32((double)p.registers[Luau.INSN_C(inst)] - 1d)] = p.registers[Luau.INSN_A(inst)];
+                    ((object[])p.registers[Luau.INSN_B(inst)])[Convert.ToInt32((double)p.registers[Luau.INSN_C(inst)])-1] = p.registers[Luau.INSN_A(inst)];
                     break;
                 case LuauOpcode.LOP_SUB:
                     {
