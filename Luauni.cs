@@ -38,9 +38,7 @@ public class Luauni
     {
         file = File.OpenRead(filepath);
         globals = new Dictionary<string, object>();
-        Luau.SetupGlobals();
         SetGlobal("print", (Action<object[]>)CG.print);
-        SetGlobal("math", Luau.math);
     }
 
     private void SetGlobal(string name, object value)
@@ -436,12 +434,6 @@ public class Luauni
                     break;
                 case LuauOpcode.LOP_GETTABLE:
                     p.registers[Luau.INSN_A(inst)] = ((object[])p.registers[Luau.INSN_B(inst)])[Luau.INSN_C(inst)-2];
-                    break;
-                case LuauOpcode.LOP_GETTABLEKS:
-                    {
-                        uint aux = getNext(ref p);
-                        
-                    }
                     break;
                 case LuauOpcode.LOP_JUMP:
                 case LuauOpcode.LOP_JUMPBACK:
