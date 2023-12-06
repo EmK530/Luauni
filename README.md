@@ -52,5 +52,5 @@ If there is a warning icon then it's either implemented inaccurately or unstable
 
 ## Global Support
 This is a list of all the globals Luauni currently supports:<br>
-`math` <b>(87%)</b> | Missing: `math.fmod` `math.frexp` `math.modf` `math.noise`
-`print`<br>
+`math` <b>(87%)</b> | Missing: `math.fmod` `math.frexp` `math.modf` `math.noise`<br>
+`print`
