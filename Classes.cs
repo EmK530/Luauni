@@ -67,12 +67,22 @@ public static class Luau
     public static bool EQUAL(object v1, object v2)
     {
         Type type = v1.GetType();
-        if (type == typeof(double))
+        Type type2 = v2.GetType();
+        if (type == typeof(double) || type == typeof(int))
         {
+            if (type == typeof(int))
+            {
+                v1 = Convert.ToDouble((int)v1);
+            }
+            if (type2 == typeof(int))
+            {
+                v2 = Convert.ToDouble((int)v2);
+            }
             return (double)v1 == (double)v2;
         } else if (type == typeof(string)) {
             return (string)v1 == (string)v2;
-        } else
+        }
+        else
         {
             return v1 == v2;
         }
