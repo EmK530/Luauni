@@ -119,13 +119,13 @@
                     }
                 case 1:
                     {
-                        return new object[1] { (int)(1 + ((Convert.ToUInt64(inp[0]) * Luau.pcg32_random()) >> 32)) };
+                        return new object[1] { (double)(1 + ((Convert.ToUInt64(inp[0]) * Luau.pcg32_random()) >> 32)) };
                     }
                 case 2:
                     {
                         int l = Convert.ToInt32((double)inp[0]);
                         int u = Convert.ToInt32((double)inp[1]);
-                        return new object[1] { l + (int)((((uint)u - (uint)l + 1UL) * Luau.pcg32_random()) >> 32) };
+                        return new object[1] { (double)(l + (int)((((uint)u - (uint)l + 1UL) * Luau.pcg32_random()) >> 32)) };
                     }
                 default:
                     Luauni.error("Unsupported number of math.random arguments! Returning 0.");
