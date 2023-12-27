@@ -18,7 +18,7 @@ If there is a warning icon then it's either implemented inaccurately or unstable
 ✅ `LOP_GETTABLE` `LOP_SETTABLE` `LOP_GETTABLEKS`<br>
 ❌ `LOP_SETTABLEKS` `LOP_GETTABLEN` `LOP_SETTABLEN`<br>
 ⚠️ `LOP_NEWCLOSURE`<br>
-❌ `LOP_NAMECALL`<br>
+✅ `LOP_NAMECALL`<br>
 ✅ `LOP_CALL`<br>
 ✅ `LOP_RETURN`<br>
 ✅ `LOP_JUMP` `LOP_JUMPBACK`<br>
