@@ -1,4 +1,25 @@
-﻿public static class CG
+﻿using System;
+using System.Collections.Generic;
+using Unity.VisualScripting.FullSerializer;
+using UnityEngine;
+
+public class Mouse
+{
+
+}
+public static class CGNI
+{
+    public static GameObject game = GameObject.Find("game");
+    public static Transform InstLocation = GameObject.Find("NilParentClones").transform;
+    public static Dictionary<string, object> ServiceLocations = new Dictionary<string, object>()
+    {
+        ["GetMouse"] = "LocalPlayer",
+        ["GetService"] = "game",
+        ["Clone"] = typeof(Instance),
+    };
+    public static Mouse ms = new Mouse();
+}
+public static class CG
 {
     public static void print(params object[] args)
     {
@@ -13,7 +34,7 @@
             output += a.ToString();
             first = false;
         }
-        Console.WriteLine("\x1b[7;30;47m[Bytecode] " + output + "\x1b[0m ");
+        Debug.Log("[Bytecode] " + output);
     }
     public static class math
     {

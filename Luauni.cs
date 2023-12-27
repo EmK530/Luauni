@@ -2,7 +2,10 @@
 #pragma warning disable CS8602
 #pragma warning disable CS8604
 #pragma warning disable CS8605
+#pragma warning disable CS8632
 
+using System;
+using System.IO;
 using Microsoft.VisualBasic;
 using System.Drawing;
 using System.Security.Cryptography;
@@ -14,11 +17,14 @@ using System.Runtime.ConstrainedExecution;
 using System.ComponentModel.Design;
 using System.Collections.Generic;
 using System.Reflection;
+using System.Linq;
+using UnityEngine;
 
-public class Luauni
+public class Luauni : MonoBehaviour
 {
     FileStream file;
 
+    public string TargetScript = "CharacterScript";
     private Dictionary<string, object> globals;
     string[] stringtable;
     int[] protopos;
@@ -28,19 +34,23 @@ public class Luauni
     Proto mainproto;
     int instPos = -1;
 
-    public static bool db = false;
+    public static bool db = true;
 
-    public static void debug(object input) { if (db) { Console.WriteLine("\x1b[1;30;40m" + "[DEBUG] " + input + "\x1b[0m "); } }
-    public static void print(object input) { Console.WriteLine("\x1b[7;30;47m" + input + "\x1b[0m "); }
-    public static void warn(object input) { Console.WriteLine("\x1b[7;30;43m" + "[WARN] " + input + "\x1b[0m "); }
-    public static void error(object input) { Console.WriteLine("\x1b[7;30;41m" + "[ERROR] " + input + "\x1b[0m "); }
+    public static void debug(object input) { if (db) { UnityEngine.Debug.Log("[DEBUG] " + input); } }
+    public static void print(object input) { UnityEngine.Debug.Log(input); }
+    public static void warn(object input) { UnityEngine.Debug.LogWarning(input); }
+    public static void error(object input) { UnityEngine.Debug.LogError(input); }
 
-    public Luauni(string filepath)
+    private void Start()
     {
-        file = File.OpenRead(filepath);
+        file = File.OpenRead(Application.streamingAssetsPath+"\\Scripts\\"+TargetScript+".bin");
         globals = new Dictionary<string, object>();
         IterGlobals(typeof(CG), globals, "", true);
+        globals["game"] = Luau.NewInstance(GameObject.Find("game"));
+        globals["_G"] = new Dictionary<string, object>();
         //SetGlobal("print", (Action<object[]>)CG.print);
+        Parse();
+        StartCoroutine(Execute());
     }
 
     private void IterGlobals(Type i, Dictionary<string, object> contain, string path, bool top)
@@ -265,14 +275,15 @@ public class Luauni
         file.Close();
     }
 
-    public void Execute()
+    System.Collections.IEnumerator Execute()
     {
         print("Begin execution...\n");
         Proto main = protos[mainprotoId];
         executeProto(ref main);
+        yield return 0;
     }
 
-    private Instruction getNext(ref Proto use)
+    private uint getNext(ref Proto use)
     {
         use.instpos += 1;
         return use.code[use.instpos];
@@ -283,7 +294,7 @@ public class Luauni
         p.instpos = -1;
         while (true)
         {
-            Instruction inst = getNext(ref p);
+            uint inst = getNext(ref p);
             LuauOpcode opcode = (LuauOpcode)Luau.INSN_OP(inst);
             debug("Proto " + p.bytecodeid + " executing instruction " + opcode);
             switch (opcode)
@@ -349,7 +360,28 @@ public class Luauni
                     break;
                 case LuauOpcode.LOP_GETTABLEKS:
                     //big lmao v2
-                    p.registers[Luau.INSN_A(inst)] = ((Dictionary<string, object>)p.registers[Luau.INSN_B(inst)])[(string)p.k[getNext(ref p)]];
+                    string index = (string)p.k[getNext(ref p)];
+                    debug(index);
+                    object obj = p.registers[Luau.INSN_B(inst)];
+                    if (obj == null)
+                    {
+                        error("Attempt to index nil with " + index);
+                        return (null, 0);
+                    }
+                    else if (obj is Instance)
+                    {
+                        Transform trs = ((Instance)obj).src.transform.Find(index);
+                        if (trs == null)
+                        {
+                            error(index + " is not a valid member of " + ((Instance)obj).src.name);
+                            return (null, 0);
+                        }
+                        p.registers[Luau.INSN_A(inst)] = Luau.NewInstance(trs.gameObject);
+                    }
+                    else
+                    {
+                        p.registers[Luau.INSN_A(inst)] = ((Dictionary<string, object>)obj)[index];
+                    }
                     break;
                 case LuauOpcode.LOP_JUMP:
                 case LuauOpcode.LOP_JUMPBACK:
@@ -358,7 +390,7 @@ public class Luauni
                 case LuauOpcode.LOP_JUMPIF:
                     {
                         object reg = p.registers[Luau.INSN_A(inst)];
-                        if (reg != null && (reg.GetType() != typeof(bool) || (bool)reg))
+                        if (reg != null && (reg is not bool || (bool)reg))
                         {
                             debug("JUMPIF PASS");
                             p.instpos += Luau.INSN_D(inst);
@@ -368,7 +400,7 @@ public class Luauni
                 case LuauOpcode.LOP_JUMPIFNOT:
                     {
                         object reg = p.registers[Luau.INSN_A(inst)];
-                        if (reg == null || (reg.GetType() == typeof(bool) && !(bool)reg))
+                        if (reg == null || (reg is bool && !(bool)reg))
                         {
                             debug("JUMPIFNOT PASS");
                             p.instpos += Luau.INSN_D(inst);
@@ -435,6 +467,33 @@ public class Luauni
                         double rg1 = (double)p.registers[Luau.INSN_B(inst)];
                         double rg2 = (double)p.registers[Luau.INSN_C(inst)];
                         p.registers[Luau.INSN_A(inst)] = rg1 * rg2;
+                    }
+                    break;
+                case LuauOpcode.LOP_NAMECALL:
+                    {
+                        string desired = (string)p.k[getNext(ref p)];
+                        object src = p.registers[Luau.INSN_B(inst)];
+                        if (src is not Instance)
+                        {
+                            error("Cannot namecall a non-instance register.");
+                            return (null, 0);
+                        }
+                        object test = CGNI.ServiceLocations[desired];
+                        Instance go = (Instance)p.registers[Luau.INSN_B(inst)];
+                        if (test == null || (test is string && (string)test != go.src.name))
+                        {
+                            error(desired + " is not a valid member of " + go.src.name);
+                            return (null, 0);
+                        }
+                        if(go.GetType().GetMethod(desired) == null)
+                        {
+                            error(desired + " is not a valid member of " + go.src.name);
+                            return (null, 0);
+                        }
+                        MethodInfo methodInfo = go.GetType().GetMethod(desired, BindingFlags.Instance | BindingFlags.Public);
+                        Func<object[], object[]> func = (Func<object[], object[]>)Delegate.CreateDelegate(typeof(Func<object[], object[]>), go, methodInfo);
+                        p.registers[Luau.INSN_A(inst)] = func;
+                        //p.registers[Luau.INSN_A(inst)] = (Func<object[], object[]>)go.GetType().GetMethod(desired).CreateDelegate(typeof(Func<object[], object[]>));
                     }
                     break;
                 case LuauOpcode.LOP_NEWCLOSURE:

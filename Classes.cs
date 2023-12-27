@@ -1,5 +1,6 @@
-global using Instruction = System.UInt32;
+using System;
 using System.Diagnostics;
+using UnityEngine;
 
 public static class Essentials
 {
@@ -36,8 +37,8 @@ public struct Proto
     public int sizek;
     public int sizep;
     public Proto[] p;
-    public Instruction[] code;
-    public Instruction[] codeentry;
+    public uint[] code;
+    public uint[] codeentry;
     public object[] k; // danger
     public object?[] registers; // custom
     public int instpos; // custom
@@ -53,17 +54,16 @@ public struct Closure
     public byte stacksize;
     public byte preload;
     //fuck the gclist
-
 }
 
 public static class Luau
 {
-    public static uint INSN_OP(Instruction insn) => insn & 0xFF;
-    public static uint INSN_A(Instruction insn) => (insn >> 8) & 0xFF;
-    public static uint INSN_B(Instruction insn) => (insn >> 16) & 0xFF;
-    public static uint INSN_C(Instruction insn) => (insn >> 24) & 0xFF;
-    public static int INSN_D(Instruction insn) => (int)((int)insn >> 16);
-    public static int INSN_E(Instruction insn) => (int)(insn >> 8);
+    public static uint INSN_OP(uint insn) => insn & 0xFF;
+    public static uint INSN_A(uint insn) => (insn >> 8) & 0xFF;
+    public static uint INSN_B(uint insn) => (insn >> 16) & 0xFF;
+    public static uint INSN_C(uint insn) => (insn >> 24) & 0xFF;
+    public static int INSN_D(uint insn) => (int)((int)insn >> 16);
+    public static int INSN_E(uint insn) => (int)(insn >> 8);
     public static bool EQUAL(object v1, object v2)
     {
         Type type = v1.GetType();
@@ -92,6 +92,31 @@ public static class Luau
         pcg32_random();
         randstate += seed;
         pcg32_random();
+    }
+    public static Instance NewInstance(GameObject inp)
+    {
+        Instance i = new Instance();
+        i.src = inp;
+        return i;
+    }
+}
+
+public class Instance
+{
+    public GameObject src;
+    public object[] Clone(params object[] args)
+    {
+        GameObject test = GameObject.Instantiate(src, CGNI.InstLocation);
+        test.name = src.name;
+        return new object[1] { test };
+    }
+    public object[] GetMouse(params object[] args)
+    {
+        return new object[1] { CGNI.ms };
+    }
+    public object[] GetService(params object[] args)
+    {
+        return new object[1] { Luau.NewInstance(CGNI.game.transform.Find((string)args[1]).gameObject) };
     }
 }
 
