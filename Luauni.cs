@@ -34,7 +34,7 @@ public class Luauni : MonoBehaviour
     Proto mainproto;
     int instPos = -1;
 
-    public static bool db = true;
+    public static bool db = false;
 
     public static void debug(object input) { if (db) { UnityEngine.Debug.Log("[DEBUG] " + input); } }
     public static void print(object input) { UnityEngine.Debug.Log(input); }
@@ -47,7 +47,7 @@ public class Luauni : MonoBehaviour
         globals = new Dictionary<string, object>();
         IterGlobals(typeof(CG), globals, "", true);
         globals["game"] = Luau.NewInstance(GameObject.Find("game"));
-        globals["_G"] = new Dictionary<string, object>();
+        globals["_G"] = _G.dict;
         //SetGlobal("print", (Action<object[]>)CG.print);
         Parse();
         StartCoroutine(Execute());
@@ -359,30 +359,32 @@ public class Luauni : MonoBehaviour
                     p.registers[Luau.INSN_A(inst)] = ((object[])p.registers[Luau.INSN_B(inst)])[Convert.ToInt32((double)p.registers[Luau.INSN_C(inst)])-1];
                     break;
                 case LuauOpcode.LOP_GETTABLEKS:
-                    //big lmao v2
-                    string index = (string)p.k[getNext(ref p)];
-                    debug(index);
-                    object obj = p.registers[Luau.INSN_B(inst)];
-                    if (obj == null)
                     {
-                        error("Attempt to index nil with " + index);
-                        return (null, 0);
-                    }
-                    else if (obj is Instance)
-                    {
-                        Transform trs = ((Instance)obj).src.transform.Find(index);
-                        if (trs == null)
+                        //big lmao v2
+                        string index = (string)p.k[getNext(ref p)];
+                        debug(index);
+                        object obj = p.registers[Luau.INSN_B(inst)];
+                        if (obj == null)
                         {
-                            error(index + " is not a valid member of " + ((Instance)obj).src.name);
+                            error("Attempt to index nil with " + index);
                             return (null, 0);
                         }
-                        p.registers[Luau.INSN_A(inst)] = Luau.NewInstance(trs.gameObject);
+                        else if (obj is Instance)
+                        {
+                            Transform trs = ((Instance)obj).src.transform.Find(index);
+                            if (trs == null)
+                            {
+                                error(index + " is not a valid member of " + ((Instance)obj).src.name);
+                                return (null, 0);
+                            }
+                            p.registers[Luau.INSN_A(inst)] = Luau.NewInstance(trs.gameObject);
+                        }
+                        else
+                        {
+                            p.registers[Luau.INSN_A(inst)] = ((Dictionary<string, object>)obj)[index];
+                        }
+                        break;
                     }
-                    else
-                    {
-                        p.registers[Luau.INSN_A(inst)] = ((Dictionary<string, object>)obj)[index];
-                    }
-                    break;
                 case LuauOpcode.LOP_JUMP:
                 case LuauOpcode.LOP_JUMPBACK:
                     p.instpos += Luau.INSN_D(inst);
@@ -559,6 +561,35 @@ public class Luauni : MonoBehaviour
                     //big lmao 2 electric boogaloo
                     ((object[])p.registers[Luau.INSN_B(inst)])[Convert.ToInt32((double)p.registers[Luau.INSN_C(inst)])-1] = p.registers[Luau.INSN_A(inst)];
                     break;
+                case LuauOpcode.LOP_SETTABLEKS:
+                    {
+                        //big lmao v3
+                        string index = (string)p.k[getNext(ref p)];
+                        debug(index);
+                        object obj = p.registers[Luau.INSN_B(inst)];
+                        if (obj == null)
+                        {
+                            error("Attempt to index nil with " + index);
+                            return (null, 0);
+                        }
+                        if (obj is Dictionary<string, object>)
+                        {
+                            Dictionary<string, object> d = (Dictionary<string, object>)obj;
+                            if (!d.ContainsKey(index))
+                            {
+                                d.Add(index, p.registers[Luau.INSN_A(inst)]);
+                            } else
+                            {
+                                ((Dictionary<string, object>)obj)[index] = p.registers[Luau.INSN_A(inst)];
+                            }
+                        }
+                        else
+                        {
+                            error("Unsupported SETTABLEKS operation on type "+obj.GetType());
+                            return (null, 0);
+                        }
+                        break;
+                    }
                 case LuauOpcode.LOP_SUB:
                     {
                         double rg1 = (double)p.registers[Luau.INSN_B(inst)];

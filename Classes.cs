@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using UnityEngine;
 
@@ -118,6 +119,11 @@ public class Instance
     {
         return new object[1] { Luau.NewInstance(CGNI.game.transform.Find((string)args[1]).gameObject) };
     }
+}
+
+public static class _G
+{
+    public static Dictionary<string, object> dict = new Dictionary<string, object>();
 }
 
 public static class lfunc
