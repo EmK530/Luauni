@@ -4,6 +4,9 @@
 
 global using Instruction = System.UInt32;
 using System;
+using System.Collections.Generic;
+using System.Linq;
+using static System.Runtime.InteropServices.JavaScript.JSType;
 
 public struct CommonHeader
 {
@@ -29,7 +32,104 @@ public struct Proto
     public Instruction[] codeentry;
     public object[] k; // danger
     public object?[] registers; // custom
-    public int instpos; // custom
+    public IEnumerator<uint> code_iter;
+}
+
+public enum CallStatus
+{
+    Finished = 0,
+    Yielded = 1,
+    Errored = 2
+}
+
+public ref struct CallData
+{
+    public ref Proto initiator;
+    public int funcRegister;
+    public int args;
+    public int returns;
+}
+
+public struct CallResults
+{
+    public CallStatus status;
+    public float yieldDuration;
+
+    public CallResults()
+    {
+        status = CallStatus.Finished;
+        yieldDuration = 0f;
+    }
+}
+
+public static class Luau
+{
+    public static uint INSN_OP(Instruction insn) => insn & 0xFF;
+    public static uint INSN_A(Instruction insn) => (insn >> 8) & 0xFF;
+    public static uint INSN_B(Instruction insn) => (insn >> 16) & 0xFF;
+    public static uint INSN_C(Instruction insn) => (insn >> 24) & 0xFF;
+    public static int INSN_D(Instruction insn) => (int)((int)insn >> 16);
+    public static int INSN_E(Instruction insn) => (int)(insn >> 8);
+    public static bool EQUAL(object v1, object v2)
+    {
+        Type type = v1.GetType();
+        if (type == typeof(double))
+        {
+            return (double)v1 == (double)v2;
+        }
+        else if (type == typeof(string))
+        {
+            return (string)v1 == (string)v2;
+        }
+        else
+        {
+            return v1 == v2;
+        }
+    }
+    public static double safeNum(object inp)
+    {
+        if (inp == null)
+        {
+            return 0d;
+        }
+        else
+        {
+            return (double)inp;
+        }
+    }
+    public static void returnToProto(ref CallData p, object[] args)
+    {
+        int loops = 0;
+        foreach(object arg in args) {
+            p.initiator.registers[p.funcRegister + loops + 1] = arg;
+            loops++;
+        }
+    }
+    public static object[] getAllArgs(ref CallData d)
+    {
+        object[] buf = new object[d.args];
+        for(int i = 0; i < d.args; i++)
+        {
+            buf[i] = d.initiator.registers[d.funcRegister + i + 2];
+        }
+        return buf;
+    }
+    public static ulong randstate = 0;
+    public static uint pcg32_random()
+    {
+        ulong oldstate = randstate;
+        randstate = oldstate * 6364136223846793005UL + (105 | 1);
+        uint xorshifted = (uint)(((oldstate >> 18) ^ oldstate) >> 27);
+        uint rot = (uint)(oldstate >> 59);
+        return (xorshifted >> (int)rot) | (xorshifted << (-(int)rot & 31));
+    }
+    public static void pcg32_seed(ulong seed)
+    {
+        randstate = 0;
+        pcg32_random();
+        randstate += seed;
+        pcg32_random();
+    }
 }
 
 public static class ParseEssentials
@@ -42,7 +142,6 @@ public static class ParseEssentials
         p.flags = 0;
         p.codeentry = null;
         p.registers = new object[255];
-        p.instpos = -1;
 
         p.bytecodeid = i;
         p.maxstacksize = br.ReadByte();
@@ -57,6 +156,7 @@ public static class ParseEssentials
         {
             p.code[j] = br.ReadUInt32(Endian.Little);
         }
+        p.code_iter = p.code.Cast<uint>().GetEnumerator();
         p.sizek = br.ReadVariableLen();
         Logging.Debug($"Loading {p.sizek} constants for Proto {i}", "Luauni:Parse:PP");
         p.k = new object[p.sizek];

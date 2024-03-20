@@ -1,12 +1,24 @@
 #pragma warning disable CS8602
 
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Runtime.InteropServices;
 
 public class Luauni
 {
     public Luauni(string path)
     {
+        if (!Globals.IsInitialized())
+        {
+            Logging.Debug("Initializing globals...", "Luauni:Constructor");
+            Globals.Init();
+            if (!Globals.IsInitialized())
+            {
+                Logging.Error("Could not initialize globals, cannot proceed with execution.", "Luauni:Constructor");
+                return;
+            }
+        }
         if (File.Exists(path))
         {
             br = new ByteReader(File.ReadAllBytes(path));
@@ -15,6 +27,11 @@ public class Luauni
         {
             Logging.Error("Could not load file path: " + path, "Luauni:Constructor");
         }
+    }
+
+    public bool IsReady()
+    {
+        return ready;
     }
 
     private ByteReader? br;
@@ -86,7 +103,18 @@ public class Luauni
         mainProto = protos[mainProtoId];
         Logging.Debug($"Main proto ID: {mainProtoId}", "Luauni:Parse");
 
+        pL.Add(mainProto);
         ready = true;
+        Logging.Print("Bytecode loaded, ready for execution.", "Luauni:Parse");
+    }
+
+    private int cEL = 0; // current execution layer
+    private List<Proto> pL = new List<Proto>(); // proto layers
+
+    private Instruction nextInst()
+    {
+        pL[cEL].code_iter.MoveNext();
+        return pL[cEL].code_iter.Current;
     }
 
     public void Step()
@@ -94,6 +122,35 @@ public class Luauni
         if (!ready)
         {
             Logging.Error("No script is loaded, cannot perform step.", "Luauni:Step"); return;
+        }
+        bool should_loop = true;
+        while (should_loop)
+        {
+            Instruction inst = nextInst();
+            LuauOpcode opcode = (LuauOpcode)Luau.INSN_OP(inst);
+            Logging.Debug($"Proto {pL[cEL].bytecodeid} executing opcode {opcode}", "Luauni:Step");
+            switch (opcode)
+            {
+                case LuauOpcode.LOP_NOP:
+                case LuauOpcode.LOP_BREAK:
+                case LuauOpcode.LOP_PREPVARARGS:
+                case LuauOpcode.LOP_GETVARARGS:
+                    Logging.Warn($"Ignoring opcode not planned to support: {opcode}", "Luauni:Step");
+                    break;
+                case LuauOpcode.LOP_GETGLOBAL:
+                    pL[cEL].registers[Luau.INSN_A(inst)] = Globals.Get((string)pL[cEL].k[nextInst()]);
+                    break;
+                case LuauOpcode.LOP_NEWCLOSURE:
+                    pL[cEL].registers[Luau.INSN_A(inst)] = pL[cEL].p[Luau.INSN_D(inst)];
+                    break;
+                default:
+                    Logging.Error($"Unsupported opcode: {opcode}", "Luauni:Step");
+                    return;
+            }
+            if (opcode == LuauOpcode.LOP_RETURN)
+            {
+                break;
+            }
         }
     }
 }
