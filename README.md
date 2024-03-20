@@ -7,23 +7,23 @@ This is what Luauni is being designed for and while it allows other versions, it
 
 ## Note
 This is the new remake of Luauni where I plan to make better execution now that I know what is required for it to work in Unity.<br>
-Support is even lower here because I just started.<br>
-All Luauni v2 can do so far is parse a compiled script.
+Opcode support is even worse here because I just started.
 
 ## Opcode Support
 This is a list of all the opcodes Luauni currently supports.<br>
-If there is a warning icon then it's either implemented inaccurately or unstable.<br>
-❌ `LOP_NOP`<br>
-❌ `LOP_BREAK`<br>
+If there is a warning icon then Luauni either ignores it or the implementation isn't fully correct.<br>
+⚠️ `LOP_NOP`<br>
+⚠️ `LOP_BREAK`<br>
 ❌ `LOP_LOADNIL`<br>
 ❌ `LOP_LOADB` `LOP_LOADN` `LOP_LOADK`<br>
 ❌ `LOP_MOVE`<br>
-❌ `LOP_GETGLOBAL` `LOP_SETGLOBAL`<br>
+✅ `LOP_GETGLOBAL`<br>
+❌ `LOP_SETGLOBAL`<br>
 ❌ `LOP_GETUPVAL` `LOP_SETUPVAL` `LOP_CLOSEUPVALS`<br>
 ❌ `LOP_GETIMPORT`<br>
 ❌ `LOP_GETTABLE` `LOP_SETTABLE` `LOP_GETTABLEKS`<br>
 ❌ `LOP_SETTABLEKS` `LOP_GETTABLEN` `LOP_SETTABLEN`<br>
-❌ `LOP_NEWCLOSURE`<br>
+✅ `LOP_NEWCLOSURE`<br>
 ❌ `LOP_NAMECALL`<br>
 ❌ `LOP_CALL`<br>
 ❌ `LOP_RETURN`<br>
@@ -45,7 +45,7 @@ If there is a warning icon then it's either implemented inaccurately or unstable
 ❌ `LOP_FORGLOOP_INEXT` `LOP_DEP_FORGLOOP_INEXT`<br>
 ❌ `LOP_FORGPREP_NEXT`<br>
 ❌ `LOP_NATIVECALL`<br>
-❌ `LOP_GETVARARGS` `LOP_PREPVARARGS`<br>
+⚠️ `LOP_GETVARARGS` `LOP_PREPVARARGS`<br>
 ❌ `LOP_DUPCLOSURE`<br>
 ❌ `LOP_LOADKX`<br>
 ❌ `LOP_JUMPX`<br>
