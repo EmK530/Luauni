@@ -28,7 +28,7 @@ If there is a warning icon then Luauni either ignores it or the implementation i
 ❌ `LOP_SETTABLEKS` `LOP_GETTABLEN` `LOP_SETTABLEN`<br>
 ✅ `LOP_NEWCLOSURE`<br>
 ❌ `LOP_NAMECALL`<br>
-✅ `LOP_CALL`<br>
+⚠️ `LOP_CALL`<br>
 ⚠️ `LOP_RETURN`<br>
 ✅ `LOP_JUMP` `LOP_JUMPBACK`<br>
 ✅ `LOP_JUMPIF` `LOP_JUMPIFNOT` `LOP_JUMPIFEQ` `LOP_JUMPIFLT` `LOP_JUMPIFNOTEQ` `LOP_JUMPIFNOTLT`<br>
