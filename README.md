@@ -7,7 +7,9 @@ This is what Luauni is being designed for and while it allows other versions, it
 
 ## Note
 This is the new remake of Luauni where I plan to make better execution now that I know what is required for it to work in Unity.<br>
-Opcode support is even worse here because I just started.
+Opcode support is even worse here because I just started.<br><br>
+<b>When compiling a script for Luauni, please compile with -O0 and -g0</b><br>
+This is important because optimization levels use some complicated opcodes that may not be supported ever.
 
 ## Opcode Support
 This is a list of all the opcodes Luauni currently supports.<br>
