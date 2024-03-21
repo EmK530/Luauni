@@ -15,8 +15,7 @@ If there is a warning icon then Luauni either ignores it or the implementation i
 ⚠️ `LOP_NOP`<br>
 ⚠️ `LOP_BREAK`<br>
 ✅ `LOP_LOADNIL`<br>
-❌ `LOP_LOADB` `LOP_LOADN`<br>
-✅ `LOP_LOADK`<br>
+✅ `LOP_LOADB` `LOP_LOADN` `LOP_LOADK`<br>
 ✅ `LOP_MOVE`<br>
 ✅ `LOP_GETGLOBAL`<br>
 ❌ `LOP_SETGLOBAL`<br>
@@ -32,7 +31,7 @@ If there is a warning icon then Luauni either ignores it or the implementation i
 ✅ `LOP_JUMP` `LOP_JUMPBACK`<br>
 ✅ `LOP_JUMPIF` `LOP_JUMPIFNOT` `LOP_JUMPIFEQ` `LOP_JUMPIFLT` `LOP_JUMPIFNOTEQ` `LOP_JUMPIFNOTLT`<br>
 ❌ `LOP_JUMPIFLE` `LOP_JUMPIFNOTLE`<br>
-❌ `LOP_ADD` `LOP_SUB` `LOP_MUL` `LOP_DIV` `LOP_MOD` `LOP_POW`<br>
+✅ `LOP_ADD` `LOP_SUB` `LOP_MUL` `LOP_DIV` `LOP_MOD` `LOP_POW`<br>
 ❌ `LOP_ADDK` `LOP_SUBK` `LOP_MULK` `LOP_DIVK` `LOP_MODK` `LOP_POWK`<br>
 ❌ `LOP_AND` `LOP_OR`<br>
 ❌ `LOP_ANDK` `LOP_ORK`<br>
@@ -42,7 +41,7 @@ If there is a warning icon then Luauni either ignores it or the implementation i
 ❌ `LOP_NEWTABLE`<br>
 ❌ `LOP_DUPTABLE`<br>
 ❌ `LOP_SETLIST`<br>
-❌ `LOP_FORNPREP` `LOP_FORNLOOP`<br>
+✅ `LOP_FORNPREP` `LOP_FORNLOOP`<br>
 ❌ `LOP_FORGPREP` `LOP_FORGLOOP`<br>
 ❌ `LOP_FORGLOOP_INEXT` `LOP_DEP_FORGLOOP_INEXT`<br>
 ❌ `LOP_FORGPREP_NEXT`<br>
