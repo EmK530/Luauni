@@ -1,8 +1,11 @@
-#pragma warning disable CS8903
+#pragma warning disable CS8601
+#pragma warning disable CS8603
+#pragma warning disable CS8625
 #pragma warning disable CS8981
 
 using System;
 using System.Collections.Generic;
+using System.ComponentModel.Design;
 using System.Globalization;
 using System.IO;
 using System.Linq;
@@ -29,6 +32,7 @@ public static class Globals
     {
         foreach (Type t in i.GetNestedTypes())
         {
+            Logging.Debug($"Binding global class '{path+(top?"":".")+t.Name}'", "Globals:IterateClass");
             contain[t.Name] = new Dictionary<string, object>();
             string path2 = path;
             if (!top)
@@ -38,17 +42,33 @@ public static class Globals
             path2 += t.Name;
             IterateClass(t, (Dictionary<string, object>)contain[t.Name], path2, false);
         }
+        foreach (FieldInfo t in i.GetFields())
+        {
+            Logging.Debug($"Binding global field: {path+(top?"":".")+t.Name}", "Globals:IterateClass");
+            contain[t.Name] = t.GetValue(i);
+        }
         foreach (MethodInfo t in i.GetMethods(BindingFlags.Static | BindingFlags.Public).Cast<MethodInfo>())
         {
-            Logging.Debug($"Binding global '{path+(top?"":".")+t.Name}'", "Globals:IterateClass");
+            Logging.Debug($"Binding global function '{path+(top?"":".")+t.Name}'", "Globals:IterateClass");
             contain[t.Name] = (Standard)t.CreateDelegate(typeof(Standard));
         }
     }
     public static object Get(string name)
     {
-        if(list.TryGetValue(name, out var value))
+        Logging.Debug($"Get global '{name}'", "Globals:Get");
+        if (list.TryGetValue(name, out var value))
         {
-            return value;
+            if (value.GetType() == typeof(Dictionary<string, object>))
+            {
+                return new NamedDict()
+                {
+                    name = name,
+                    dict = (Dictionary<string, object>)value
+                };
+            } else
+            {
+                return value;
+            }
         }
         else
         {
@@ -68,24 +88,68 @@ public static class GC
     {
         string output = "";
         bool first = true;
-        for(int i = 0; i < dat.args; i++)
+        object[] inp = Luau.getAllArgs(ref dat);
+        foreach (object arg in inp)
         {
-            var a = dat.initiator.registers[dat.funcRegister + i + 1];
             if (!first)
             {
                 output += " ";
             }
-            output += a == null ? "nil" : a.ToString();
+            output += arg == null ? "nil" : arg.ToString();
             first = false;
         }
         Console.WriteLine("\x1b[7;30;47m[Bytecode] " + output + "\x1b[0m ");
         return new CallResults();
     }
+    public static CallResults tonumber(ref CallData dat)
+    {
+        object[] inp = Luau.getAllArgs(ref dat);
+        Type tp = inp[0].GetType();
+        if (tp == typeof(double))
+        {
+            Luau.returnToProto(ref dat, new object[1] { inp[0] });
+        } else if (tp == typeof(string) && double.TryParse((string)inp[0], out double val))
+        {
+            Luau.returnToProto(ref dat, new object[1] { val });
+        } else
+        {
+            Luau.returnToProto(ref dat, new object[1] { null });
+        }
+        return new CallResults();
+    }
+    public static CallResults tostring(ref CallData dat)
+    {
+        object[] inp = Luau.getAllArgs(ref dat);
+        Luau.returnToProto(ref dat, new object[1] { (inp[0] == null ? "nil" : inp[0].ToString()) });
+        return new CallResults();
+    }
     public static class math
     {
+        //missing abs
+        //missing acos
+        //missing asin
+        //missing atan
+        //missing atan2
+        //missing ceil
+        //missing clamp
+        //missing cos
+        //missing deg
+        //missing exp
+        //missing floor
+        //missing fmod
+        //missing frexp
+        //missing ldexp
+        //missing log
+        //missing log10
+        //missing max
+        //missing min
+        //missing modf
+        //missing noise
+        public static double pi = 3.1415926535897931;
+        //missing pow
+        //missing rad
         public static CallResults random(ref CallData dat)
         {
-            Logging.Debug("We randomizing... epic", "Globals:math.random");
             object[] inp = Luau.getAllArgs(ref dat);
             switch (dat.args)
             {
@@ -115,9 +179,25 @@ public static class GC
         public static CallResults randomseed(ref CallData dat)
         {
             object[] inp = Luau.getAllArgs(ref dat);
-            Logging.Debug($"Received a call to set the seed to {inp[0]}", "Globals:math.randomseed");
             Luau.pcg32_seed(Convert.ToUInt64((double)inp[0]));
             return new CallResults();
         }
+        public static CallResults round(ref CallData dat)
+        {
+            object[] inp = Luau.getAllArgs(ref dat);
+            Luau.returnToProto(ref dat, new object[1] { Math.Round(Luau.safeNum(inp[0])) });
+            return new CallResults();
+        }
+        //missing sign
+        //missing sin
+        //missing sinh
+        //missing sqrt
+        public static CallResults tan(ref CallData dat)
+        {
+            object[] inp = Luau.getAllArgs(ref dat);
+            Luau.returnToProto(ref dat, new object[1] { Math.Tan(Luau.safeNum(inp[0])) });
+            return new CallResults();
+        }
+        //missing tanh
     }
 }

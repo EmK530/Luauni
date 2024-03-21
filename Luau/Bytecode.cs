@@ -1,7 +1,6 @@
 //File retrieved from https://github.com/luau-lang/luau/blob/3d74a8f4d4fa9de03f1952c5a6e014a6dedbb4fc/Common/include/Luau/Bytecode.h
 
 // This file is part of the Luau programming language and is licensed under MIT License; see LICENSE.txt for details
-#pragma once
 
 // clang-format off
 

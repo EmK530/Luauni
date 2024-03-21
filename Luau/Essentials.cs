@@ -1,3 +1,4 @@
+#pragma warning disable CS8600
 #pragma warning disable CS8601
 #pragma warning disable CS8618
 #pragma warning disable CS8625
@@ -46,6 +47,12 @@ public enum CallStatus
     Finished = 0,
     Yielded = 1,
     Errored = 2
+}
+
+public struct NamedDict
+{
+    public string name;
+    public Dictionary<string, object> dict;
 }
 
 public ref struct CallData
@@ -106,10 +113,15 @@ public static class Luau
     public static void returnToProto(ref CallData p, object[] args)
     {
         int tern = p.returns == -1 ? args.Length : p.returns;
+        Proto copy = p.initiator;
+        copy.lastReturn = new object[tern];
         for (int i = 0; i < tern; i++)
         {
-            p.initiator.registers[p.funcRegister + i] = i < args.Length ? args[i] : null;
+            object tern2 = i < args.Length ? args[i] : null;
+            copy.registers[p.funcRegister + i] = tern2;
+            copy.lastReturn[i] = tern2;
         }
+        p.initiator = copy;
     }
     public static object[] getAllArgs(ref CallData d)
     {

@@ -162,11 +162,18 @@ public class Luauni
                         uint reg = Luau.INSN_A(inst);
                         int args = (int)Luau.INSN_B(inst) - 1;
                         int returns = (int)Luau.INSN_C(inst) - 1;
-                        Type regType = pL[cEL].registers[reg].GetType();
+                        object regcopy = pL[cEL].registers[reg];
+                        if(regcopy == null)
+                        {
+                            Logging.Error($"Attempt to call a nil value", "Luauni:Step");
+                            ready = false;
+                            return;
+                        }
+                        Type regType = regcopy.GetType();
                         if (regType == typeof(Globals.Standard))
                         {
                             Logging.Debug("Calling a global function.", "Luauni:Step");
-                            Globals.Standard target = (Globals.Standard)pL[cEL].registers[reg];
+                            Globals.Standard target = (Globals.Standard)regcopy;
                             Proto sendProto = pL[cEL];
                             CallData send = new CallData()
                             {
@@ -206,6 +213,18 @@ public class Luauni
                         }
                         break;
                     }
+                case LuauOpcode.LOP_CONCAT:
+                    {
+                        string output = "";
+                        uint regStart = Luau.INSN_B(inst);
+                        uint regEnd = Luau.INSN_C(inst);
+                        for (int i = 0; i < regEnd - regStart + 1; i++)
+                        {
+                            output += pL[cEL].registers[regStart + i].ToString();
+                        }
+                        pL[cEL].registers[Luau.INSN_A(inst)] = output;
+                    }
+                    break;
                 case LuauOpcode.LOP_DIV:
                     {
                         double rg1 = (double)pL[cEL].registers[Luau.INSN_B(inst)];
@@ -245,7 +264,26 @@ public class Luauni
                 case LuauOpcode.LOP_GETTABLEKS:
                     {
                         string key = (string)pL[cEL].k[nextInst()];
-                        pL[cEL].registers[Luau.INSN_A(inst)] = ((Dictionary<string, object>)pL[cEL].registers[Luau.INSN_B(inst)])[key];
+                        Logging.Debug($"GETTABLEKS key: {key}", "Luauni:Step");
+                        object target = pL[cEL].registers[Luau.INSN_B(inst)];
+                        if(target==null)
+                        {
+                            Logging.Error($"Attempt to index nil with {key}", "Luauni:Step");
+                            ready = false;
+                            return;
+                        }
+                        NamedDict nd = (NamedDict)pL[cEL].registers[Luau.INSN_B(inst)];
+                        Dictionary<string, object> dict = nd.dict;
+                        if (dict.TryGetValue(key, out object val))
+                        {
+                            pL[cEL].registers[Luau.INSN_A(inst)] = val;
+                            Logging.Debug($"Found key: {val}", "Luauni:Step");
+                        } else
+                        {
+                            Logging.Error($"{key} is not a valid member of {nd.name}", "Luauni:Step");
+                            ready = false;
+                            return;
+                        }
                         break;
                     }
                 case LuauOpcode.LOP_JUMP:
@@ -352,16 +390,29 @@ public class Luauni
                     {
                         Logging.Debug($"Proto {pL[cEL].bytecodeid} is returning.", "Luauni:Step");
                         uint begin = Luau.INSN_A(inst);
-                        uint returns = Luau.INSN_B(inst) - 1;
+                        int returns = (int)Luau.INSN_B(inst) - 1;
+                        bool returnwhatever = false;
+                        if(returns == -1)
+                        {
+                            returnwhatever = true;
+                            returns = pL[cEL].lastReturn.Length;
+                        }
                         Logging.Debug($"Returning {returns} values.", "Luauni:Step");
                         uint startReg = pL[cEL - 1].callReg;
                         int expects = pL[cEL - 1].expectedReturns;
-                        int tern = expects == -1 ? (int)returns : expects;
+                        int tern = expects == -1 ? returns : expects;
                         Proto edit = pL[cEL - 1];
                         edit.lastReturn = new object[tern];
                         for (int i = 0; i < tern; i++)
                         {
-                            object sendback = i < returns ? pL[cEL].registers[begin + i] : null;
+                            object sendback;
+                            if (returnwhatever)
+                            {
+                                sendback = i < returns ? pL[cEL].lastReturn[i] : null;
+                            } else
+                            {
+                                sendback = i < returns ? pL[cEL].registers[begin + i] : null;
+                            }
                             pL[cEL - 1].registers[startReg + i] = sendback;
                             edit.lastReturn[i] = sendback;
                         }
@@ -369,6 +420,11 @@ public class Luauni
                         pL.RemoveAt(cEL);
                         iP.RemoveAt(cEL);
                         cEL--;
+                    }
+                    break;
+                case LuauOpcode.LOP_SETGLOBAL:
+                    {
+                        Globals.Set((string)pL[cEL].k[nextInst()], pL[cEL].registers[Luau.INSN_A(inst)]);
                     }
                     break;
                 case LuauOpcode.LOP_SUB:
