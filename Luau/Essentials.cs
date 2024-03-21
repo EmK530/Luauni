@@ -5,7 +5,9 @@
 global using Instruction = System.UInt32;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
+using System.Runtime.InteropServices;
 using static System.Runtime.InteropServices.JavaScript.JSType;
 
 public struct CommonHeader
@@ -32,7 +34,6 @@ public struct Proto
     public Instruction[] codeentry;
     public object[] k; // danger
     public object?[] registers; // custom
-    public IEnumerator<uint> code_iter;
 }
 
 public enum CallStatus
@@ -45,7 +46,7 @@ public enum CallStatus
 public ref struct CallData
 {
     public ref Proto initiator;
-    public int funcRegister;
+    public uint funcRegister;
     public int args;
     public int returns;
 }
@@ -101,7 +102,7 @@ public static class Luau
     {
         int loops = 0;
         foreach(object arg in args) {
-            p.initiator.registers[p.funcRegister + loops + 1] = arg;
+            p.initiator.registers[p.funcRegister + loops] = arg;
             loops++;
         }
     }
@@ -110,7 +111,7 @@ public static class Luau
         object[] buf = new object[d.args];
         for(int i = 0; i < d.args; i++)
         {
-            buf[i] = d.initiator.registers[d.funcRegister + i + 2];
+            buf[i] = d.initiator.registers[d.funcRegister + i + 1];
         }
         return buf;
     }
@@ -156,7 +157,6 @@ public static class ParseEssentials
         {
             p.code[j] = br.ReadUInt32(Endian.Little);
         }
-        p.code_iter = p.code.Cast<uint>().GetEnumerator();
         p.sizek = br.ReadVariableLen();
         Logging.Debug($"Loading {p.sizek} constants for Proto {i}", "Luauni:Parse:PP");
         p.k = new object[p.sizek];

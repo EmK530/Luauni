@@ -85,6 +85,7 @@ public static class GC
     {
         public static CallResults random(ref CallData dat)
         {
+            Logging.Debug("We randomizing... epic", "Globals:math.random");
             object[] inp = Luau.getAllArgs(ref dat);
             switch (dat.args)
             {
@@ -114,6 +115,7 @@ public static class GC
         public static CallResults randomseed(ref CallData dat)
         {
             object[] inp = Luau.getAllArgs(ref dat);
+            Logging.Debug($"Received a call to set the seed to {inp[0]}", "Globals:math.randomseed");
             Luau.pcg32_seed(Convert.ToUInt64((double)inp[0]));
             return new CallResults();
         }

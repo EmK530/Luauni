@@ -1,6 +1,10 @@
+#pragma warning disable CS8600
 #pragma warning disable CS8602
+#pragma warning disable CS8604
 
+using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Runtime.InteropServices;
@@ -88,7 +92,7 @@ public class Luauni
                 Logging.Debug($"Added proto {read} to sub proto index {j}", "Luauni:Parse");
                 p.p[j] = protos[read];
             }
-            // skip debug
+            // skip Logging.Debug
             br.ReadVariableLen(); br.ReadVariableLen();
             if (br.ReadByte() == 1)
                 Logging.Warn("Line info is enabled, this is unexpected.");
@@ -104,17 +108,24 @@ public class Luauni
         Logging.Debug($"Main proto ID: {mainProtoId}", "Luauni:Parse");
 
         pL.Add(mainProto);
+        iP.Add(-1);
         ready = true;
         Logging.Print("Bytecode loaded, ready for execution.", "Luauni:Parse");
     }
 
     private int cEL = 0; // current execution layer
     private List<Proto> pL = new List<Proto>(); // proto layers
+    private List<int> iP = new List<int>(); // instruction position
 
     private Instruction nextInst()
     {
-        pL[cEL].code_iter.MoveNext();
-        return pL[cEL].code_iter.Current;
+        iP[cEL]++;
+        return pL[cEL].code[iP[cEL]];
+    }
+
+    private void jumpSteps(int steps)
+    {
+        iP[cEL] += steps;
     }
 
     public void Step()
@@ -137,19 +148,129 @@ public class Luauni
                 case LuauOpcode.LOP_GETVARARGS:
                     Logging.Warn($"Ignoring opcode not planned to support: {opcode}", "Luauni:Step");
                     break;
+                case LuauOpcode.LOP_CALL:
+                    {
+                        Logging.Debug("Performing a function call.", "Luauni:Step");
+                        uint reg = Luau.INSN_A(inst);
+                        Type regType = pL[cEL].registers[reg].GetType();
+                        Logging.Debug(regType, "Luauni:Step");
+                        Logging.Debug(Luau.INSN_B(inst) - 1, "Luauni:Step");
+                        Logging.Debug(Luau.INSN_C(inst) - 1, "Luauni:Step");
+                        if (regType == typeof(Globals.Standard))
+                        {
+                            Logging.Debug("Calling a global function.", "Luauni:Step");
+                            Globals.Standard target = (Globals.Standard)pL[cEL].registers[reg];
+                            Proto sendProto = pL[cEL];
+                            CallData send = new CallData()
+                            {
+                                initiator = ref sendProto,
+                                funcRegister = reg,
+                                args = (int)Luau.INSN_B(inst) - 1,
+                                returns = (int)Luau.INSN_C(inst) - 1
+                            };
+                            target(ref send);
+                            pL[cEL] = sendProto;
+                        } else
+                        {
+                            Logging.Warn("Unsupported function type: " + regType);
+                        }
+                        break;
+                    }
+                case LuauOpcode.LOP_JUMP:
+                case LuauOpcode.LOP_JUMPBACK:
+                    jumpSteps(Luau.INSN_D(inst));
+                    break;
+                case LuauOpcode.LOP_JUMPIF:
+                    {
+                        object reg = pL[cEL].registers[Luau.INSN_A(inst)];
+                        if (reg != null && (reg.GetType() != typeof(bool) || (bool)reg))
+                        {
+                            Logging.Debug("JUMPIF PASS");
+                            jumpSteps(Luau.INSN_D(inst));
+                        }
+                    }
+                    break;
+                case LuauOpcode.LOP_JUMPIFNOT:
+                    {
+                        object reg = pL[cEL].registers[Luau.INSN_A(inst)];
+                        if (reg == null || (reg.GetType() == typeof(bool) && !(bool)reg))
+                        {
+                            Logging.Debug("JUMPIFNOT PASS");
+                            jumpSteps(Luau.INSN_D(inst));
+                        }
+                    }
+                    break;
+                case LuauOpcode.LOP_JUMPIFEQ:
+                    Instruction AUX = nextInst();
+                    if (Luau.EQUAL(pL[cEL].registers[Luau.INSN_A(inst)], pL[cEL].registers[AUX]))
+                    {
+                        Logging.Debug("JUMPIFEQ PASS");
+                        jumpSteps(Luau.INSN_D(inst) - 1);
+                    }
+                    break;
+                case LuauOpcode.LOP_JUMPIFNOTEQ:
+                    if (!Luau.EQUAL(pL[cEL].registers[Luau.INSN_A(inst)], pL[cEL].registers[nextInst()]))
+                    {
+                        Logging.Debug("JUMPIFNOTEQ PASS");
+                        jumpSteps(Luau.INSN_D(inst) - 1);
+                    }
+                    break;
+                case LuauOpcode.LOP_JUMPIFLT:
+                    if ((double)pL[cEL].registers[Luau.INSN_A(inst)] < (double)pL[cEL].registers[nextInst()])
+                    {
+                        Logging.Debug("JUMPIFLT PASS");
+                        jumpSteps(Luau.INSN_D(inst) - 1);
+                    }
+                    break;
+                case LuauOpcode.LOP_JUMPIFNOTLT:
+                    if (!((double)pL[cEL].registers[Luau.INSN_A(inst)] < (double)pL[cEL].registers[nextInst()]))
+                    {
+                        Logging.Debug("JUMPIFNOTLT PASS");
+                        jumpSteps(Luau.INSN_D(inst) - 1);
+                    }
+                    break;
+                case LuauOpcode.LOP_LOADK:
+                    object constant = pL[cEL].k[Luau.INSN_B(inst)];
+                    Logging.Debug("LOADK CONSTANT: " + constant, "Luauni:Step");
+                    pL[cEL].registers[Luau.INSN_A(inst)] = constant;
+                    break;
+                case LuauOpcode.LOP_LOADNIL:
+                    pL[cEL].registers[Luau.INSN_A(inst)] = null;
+                    break;
                 case LuauOpcode.LOP_GETGLOBAL:
-                    pL[cEL].registers[Luau.INSN_A(inst)] = Globals.Get((string)pL[cEL].k[nextInst()]);
+                    {
+                        string key = (string)pL[cEL].k[nextInst()];
+                        Logging.Debug("GETGLOBAL KEY: " + key, "Luauni:Step");
+                        pL[cEL].registers[Luau.INSN_A(inst)] = Globals.Get(key);
+                        break;
+                    }
+                case LuauOpcode.LOP_GETTABLEKS:
+                    {
+                        string key = (string)pL[cEL].k[nextInst()];
+                        Logging.Debug("GETTABLEKS KEY: " + key, "Luauni:Step");
+                        pL[cEL].registers[Luau.INSN_A(inst)] = ((Dictionary<string, object>)pL[cEL].registers[Luau.INSN_B(inst)])[key];
+                        break;
+                    }
+                case LuauOpcode.LOP_MOVE:
+                    pL[cEL].registers[Luau.INSN_A(inst)] = pL[cEL].registers[Luau.INSN_B(inst)];
                     break;
                 case LuauOpcode.LOP_NEWCLOSURE:
                     pL[cEL].registers[Luau.INSN_A(inst)] = pL[cEL].p[Luau.INSN_D(inst)];
                     break;
+                case LuauOpcode.LOP_RETURN:
+                    should_loop = false;
+                    pL.RemoveAt(cEL);
+                    cEL--;
+                    if (pL.Count == 0)
+                    {
+                        Logging.Print("Proto execution finished.", "Luauni:Step");
+                        ready = false;
+                        return;
+                    }
+                    break;
                 default:
                     Logging.Error($"Unsupported opcode: {opcode}", "Luauni:Step");
                     return;
-            }
-            if (opcode == LuauOpcode.LOP_RETURN)
-            {
-                break;
             }
         }
     }
