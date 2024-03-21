@@ -74,7 +74,7 @@ public class Luauni
         Logging.Debug($"String table size: {strings}", "Luauni:Parse");
         for(int i = 0; i < strings; i++)
         {
-            string str = br.ReadRangeStr(br.ReadByte());
+            string str = br.ReadRangeStr(br.ReadVariableLen());
             stringtable[i] = str;
             Logging.Debug($"String table entry #{i+1}: {str}", "Luauni:Parse");
         }
