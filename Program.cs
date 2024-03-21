@@ -1,16 +1,19 @@
-﻿public static class Program
+﻿using System;
+
+class Program
 {
-    public static Luauni? luauni;
-    public static void Main()
-    {
+    static void Main(string[] args)
+    {        
         Console.Clear();
-        Essentials.system("cls");
-        Luauni.db = false;
-        luauni = new Luauni("C:\\Users\\emil3\\Desktop\\luau\\errorlog.bin");
-        luauni.Parse();
-        luauni.Execute();
-        Console.WriteLine();
-        Luauni.print("Luauni finished executing the bytecode.");
-        Console.ReadLine();
+        Logging.ShowDebug = true;
+        Logging.Print("Creating Luauni instance...");
+        Luauni script = new Luauni("C:\\Users\\emil3\\Desktop\\luau\\out.bin");
+        if (script.IsReady())
+        {
+            script.Step();
+        } else
+        {
+            Logging.Error("Script did not load.");
+        }
     }
 }
