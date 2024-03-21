@@ -34,6 +34,7 @@ public struct Proto
     public Instruction[] codeentry;
     public object[] k; // danger
     public object?[] registers; // custom
+    public uint callReg;
 }
 
 public enum CallStatus

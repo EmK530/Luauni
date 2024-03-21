@@ -158,12 +158,10 @@ public class Luauni
                     break;
                 case LuauOpcode.LOP_CALL:
                     {
-                        Logging.Debug("Performing a function call.", "Luauni:Step");
                         uint reg = Luau.INSN_A(inst);
+                        int args = (int)Luau.INSN_B(inst) - 1;
+                        int returns = (int)Luau.INSN_C(inst) - 1;
                         Type regType = pL[cEL].registers[reg].GetType();
-                        Logging.Debug(regType, "Luauni:Step");
-                        Logging.Debug(Luau.INSN_B(inst) - 1, "Luauni:Step");
-                        Logging.Debug(Luau.INSN_C(inst) - 1, "Luauni:Step");
                         if (regType == typeof(Globals.Standard))
                         {
                             Logging.Debug("Calling a global function.", "Luauni:Step");
@@ -173,11 +171,23 @@ public class Luauni
                             {
                                 initiator = ref sendProto,
                                 funcRegister = reg,
-                                args = (int)Luau.INSN_B(inst) - 1,
-                                returns = (int)Luau.INSN_C(inst) - 1
+                                args = args,
+                                returns = returns
                             };
                             target(ref send);
                             pL[cEL] = sendProto;
+                        } else if (regType == typeof(Proto))
+                        {
+                            Proto edit = pL[cEL]; edit.callReg = reg; pL[cEL] = edit; // how annoying
+                            Proto pr = (Proto)pL[cEL].registers[reg];
+                            Logging.Debug($"Moving exeution to proto {pr.bytecodeid}, passing {args} args.", "Luauni:Step");
+                            for(int i = 0; i < args; i++)
+                            {
+                                pr.registers[i] = pL[cEL].registers[reg + i + 1];
+                            }
+                            pL.Add(pr);
+                            iP.Add(-1);
+                            cEL++;
                         } else
                         {
                             Logging.Warn("Unsupported function type: " + regType);
@@ -217,14 +227,12 @@ public class Luauni
                 case LuauOpcode.LOP_GETGLOBAL:
                     {
                         string key = (string)pL[cEL].k[nextInst()];
-                        Logging.Debug("GETGLOBAL KEY: " + key, "Luauni:Step");
                         pL[cEL].registers[Luau.INSN_A(inst)] = Globals.Get(key);
                         break;
                     }
                 case LuauOpcode.LOP_GETTABLEKS:
                     {
                         string key = (string)pL[cEL].k[nextInst()];
-                        Logging.Debug("GETTABLEKS KEY: " + key, "Luauni:Step");
                         pL[cEL].registers[Luau.INSN_A(inst)] = ((Dictionary<string, object>)pL[cEL].registers[Luau.INSN_B(inst)])[key];
                         break;
                     }
@@ -287,7 +295,6 @@ public class Luauni
                     break;
                 case LuauOpcode.LOP_LOADK:
                     object constant = pL[cEL].k[Luau.INSN_B(inst)];
-                    Logging.Debug("LOADK CONSTANT: " + constant, "Luauni:Step");
                     pL[cEL].registers[Luau.INSN_A(inst)] = constant;
                     break;
                 case LuauOpcode.LOP_LOADN:
@@ -324,14 +331,24 @@ public class Luauni
                     }
                     break;
                 case LuauOpcode.LOP_RETURN:
-                    should_loop = false;
-                    pL.RemoveAt(cEL);
-                    cEL--;
-                    if (pL.Count == 0)
+                    if (pL.Count == 1)
                     {
-                        Logging.Print("Proto execution finished.", "Luauni:Step");
+                        Logging.Print("Main proto execution finished.", "Luauni:Step");
                         ready = false;
                         return;
+                    } else
+                    {
+                        Logging.Debug($"Proto {pL[cEL].bytecodeid} is returning.", "Luauni:Step");
+                        uint begin = Luau.INSN_A(inst);
+                        uint returns = Luau.INSN_B(inst);
+                        Logging.Debug($"Returning {returns} values.", "Luauni:Step");
+                        uint startReg = pL[cEL - 1].callReg;
+                        for (int i = 0; i < returns; i++)
+                        {
+                            pL[cEL - 1].registers[startReg + i] = pL[cEL].registers[begin + i];
+                        }
+                        pL.RemoveAt(cEL);
+                        cEL--;
                     }
                     break;
                 case LuauOpcode.LOP_SUB:
