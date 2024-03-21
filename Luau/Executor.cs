@@ -1,6 +1,7 @@
 #pragma warning disable CS8600
 #pragma warning disable CS8602
 #pragma warning disable CS8604
+#pragma warning disable CS8605
 
 using System;
 using System.Collections.Generic;
@@ -148,6 +149,13 @@ public class Luauni
                 case LuauOpcode.LOP_GETVARARGS:
                     Logging.Warn($"Ignoring opcode not planned to support: {opcode}", "Luauni:Step");
                     break;
+                case LuauOpcode.LOP_ADD:
+                    {
+                        double rg1 = (double)pL[cEL].registers[Luau.INSN_B(inst)];
+                        double rg2 = (double)pL[cEL].registers[Luau.INSN_C(inst)];
+                        pL[cEL].registers[Luau.INSN_A(inst)] = rg1 + rg2;
+                    }
+                    break;
                 case LuauOpcode.LOP_CALL:
                     {
                         Logging.Debug("Performing a function call.", "Luauni:Step");
@@ -174,6 +182,50 @@ public class Luauni
                         {
                             Logging.Warn("Unsupported function type: " + regType);
                         }
+                        break;
+                    }
+                case LuauOpcode.LOP_DIV:
+                    {
+                        double rg1 = (double)pL[cEL].registers[Luau.INSN_B(inst)];
+                        double rg2 = (double)pL[cEL].registers[Luau.INSN_C(inst)];
+                        pL[cEL].registers[Luau.INSN_A(inst)] = rg1 / rg2;
+                    }
+                    break;
+                case LuauOpcode.LOP_FORNPREP:
+                    {
+                        uint regId = Luau.INSN_A(inst);
+                        double limit = (double)pL[cEL].registers[regId];
+                        double step = (double)pL[cEL].registers[regId + 1];
+                        double idx = (double)pL[cEL].registers[regId + 2];
+                        jumpSteps((step > 0 ? idx <= limit : limit <= idx) ? 0 : Luau.INSN_D(inst));
+                        //return (null, 0);
+                    }
+                    break;
+                case LuauOpcode.LOP_FORNLOOP:
+                    {
+                        uint regId = Luau.INSN_A(inst);
+                        double limit = (double)pL[cEL].registers[regId];
+                        double step = (double)pL[cEL].registers[regId + 1];
+                        double idx = (double)pL[cEL].registers[regId + 2] + step;
+                        pL[cEL].registers[regId + 2] = idx;
+                        if (step > 0 ? idx <= limit : limit <= idx)
+                        {
+                            jumpSteps(Luau.INSN_D(inst));
+                        }
+                    }
+                    break;
+                case LuauOpcode.LOP_GETGLOBAL:
+                    {
+                        string key = (string)pL[cEL].k[nextInst()];
+                        Logging.Debug("GETGLOBAL KEY: " + key, "Luauni:Step");
+                        pL[cEL].registers[Luau.INSN_A(inst)] = Globals.Get(key);
+                        break;
+                    }
+                case LuauOpcode.LOP_GETTABLEKS:
+                    {
+                        string key = (string)pL[cEL].k[nextInst()];
+                        Logging.Debug("GETTABLEKS KEY: " + key, "Luauni:Step");
+                        pL[cEL].registers[Luau.INSN_A(inst)] = ((Dictionary<string, object>)pL[cEL].registers[Luau.INSN_B(inst)])[key];
                         break;
                     }
                 case LuauOpcode.LOP_JUMP:
@@ -229,33 +281,47 @@ public class Luauni
                         jumpSteps(Luau.INSN_D(inst) - 1);
                     }
                     break;
+                case LuauOpcode.LOP_LOADB:
+                    pL[cEL].registers[Luau.INSN_A(inst)] = Luau.INSN_B(inst)==1;
+                    jumpSteps((int)Luau.INSN_C(inst));
+                    break;
                 case LuauOpcode.LOP_LOADK:
                     object constant = pL[cEL].k[Luau.INSN_B(inst)];
                     Logging.Debug("LOADK CONSTANT: " + constant, "Luauni:Step");
                     pL[cEL].registers[Luau.INSN_A(inst)] = constant;
                     break;
+                case LuauOpcode.LOP_LOADN:
+                    pL[cEL].registers[Luau.INSN_A(inst)] = (double)Luau.INSN_D(inst);
+                    break;
                 case LuauOpcode.LOP_LOADNIL:
                     pL[cEL].registers[Luau.INSN_A(inst)] = null;
                     break;
-                case LuauOpcode.LOP_GETGLOBAL:
-                    {
-                        string key = (string)pL[cEL].k[nextInst()];
-                        Logging.Debug("GETGLOBAL KEY: " + key, "Luauni:Step");
-                        pL[cEL].registers[Luau.INSN_A(inst)] = Globals.Get(key);
-                        break;
-                    }
-                case LuauOpcode.LOP_GETTABLEKS:
-                    {
-                        string key = (string)pL[cEL].k[nextInst()];
-                        Logging.Debug("GETTABLEKS KEY: " + key, "Luauni:Step");
-                        pL[cEL].registers[Luau.INSN_A(inst)] = ((Dictionary<string, object>)pL[cEL].registers[Luau.INSN_B(inst)])[key];
-                        break;
-                    }
                 case LuauOpcode.LOP_MOVE:
                     pL[cEL].registers[Luau.INSN_A(inst)] = pL[cEL].registers[Luau.INSN_B(inst)];
                     break;
+                case LuauOpcode.LOP_MUL:
+                    {
+                        double rg1 = (double)pL[cEL].registers[Luau.INSN_B(inst)];
+                        double rg2 = (double)pL[cEL].registers[Luau.INSN_C(inst)];
+                        pL[cEL].registers[Luau.INSN_A(inst)] = rg1 * rg2;
+                    }
+                    break;
+                case LuauOpcode.LOP_MOD:
+                    {
+                        double rg1 = (double)pL[cEL].registers[Luau.INSN_B(inst)];
+                        double rg2 = (double)pL[cEL].registers[Luau.INSN_C(inst)];
+                        pL[cEL].registers[Luau.INSN_A(inst)] = rg1 % rg2;
+                    }
+                    break;
                 case LuauOpcode.LOP_NEWCLOSURE:
                     pL[cEL].registers[Luau.INSN_A(inst)] = pL[cEL].p[Luau.INSN_D(inst)];
+                    break;
+                case LuauOpcode.LOP_POW:
+                    {
+                        double rg1 = (double)pL[cEL].registers[Luau.INSN_B(inst)];
+                        double rg2 = (double)pL[cEL].registers[Luau.INSN_C(inst)];
+                        pL[cEL].registers[Luau.INSN_A(inst)] = Math.Pow(rg1, rg2);
+                    }
                     break;
                 case LuauOpcode.LOP_RETURN:
                     should_loop = false;
@@ -268,8 +334,16 @@ public class Luauni
                         return;
                     }
                     break;
+                case LuauOpcode.LOP_SUB:
+                    {
+                        double rg1 = (double)pL[cEL].registers[Luau.INSN_B(inst)];
+                        double rg2 = (double)pL[cEL].registers[Luau.INSN_C(inst)];
+                        pL[cEL].registers[Luau.INSN_A(inst)] = rg1 - rg2;
+                    }
+                    break;
                 default:
                     Logging.Error($"Unsupported opcode: {opcode}", "Luauni:Step");
+                    ready = false;
                     return;
             }
         }
