@@ -1,4 +1,5 @@
 #pragma warning disable CS8601
+#pragma warning disable CS8618
 #pragma warning disable CS8625
 #pragma warning disable CS8981
 
@@ -7,6 +8,7 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
+using System.Runtime.ConstrainedExecution;
 using System.Runtime.InteropServices;
 using static System.Runtime.InteropServices.JavaScript.JSType;
 
@@ -35,6 +37,8 @@ public struct Proto
     public object[] k; // danger
     public object?[] registers; // custom
     public uint callReg;
+    public int expectedReturns;
+    public object[] lastReturn;
 }
 
 public enum CallStatus
@@ -101,20 +105,26 @@ public static class Luau
     }
     public static void returnToProto(ref CallData p, object[] args)
     {
-        int loops = 0;
-        foreach(object arg in args) {
-            p.initiator.registers[p.funcRegister + loops] = arg;
-            loops++;
+        int tern = p.returns == -1 ? args.Length : p.returns;
+        for (int i = 0; i < tern; i++)
+        {
+            p.initiator.registers[p.funcRegister + i] = i < args.Length ? args[i] : null;
         }
     }
     public static object[] getAllArgs(ref CallData d)
     {
-        object[] buf = new object[d.args];
-        for(int i = 0; i < d.args; i++)
+        if (d.args != -1)
         {
-            buf[i] = d.initiator.registers[d.funcRegister + i + 1];
+            object[] buf = new object[d.args];
+            for (int i = 0; i < d.args; i++)
+            {
+                buf[i] = d.initiator.registers[d.funcRegister + i + 1];
+            }
+            return buf;
+        } else
+        {
+            return d.initiator.lastReturn;
         }
-        return buf;
     }
     public static ulong randstate = 0;
     public static uint pcg32_random()

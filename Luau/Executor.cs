@@ -1,4 +1,5 @@
 #pragma warning disable CS8600
+#pragma warning disable CS8601
 #pragma warning disable CS8602
 #pragma warning disable CS8604
 #pragma warning disable CS8605
@@ -178,12 +179,23 @@ public class Luauni
                             pL[cEL] = sendProto;
                         } else if (regType == typeof(Proto))
                         {
-                            Proto edit = pL[cEL]; edit.callReg = reg; pL[cEL] = edit; // how annoying
+                            Proto edit = pL[cEL]; edit.callReg = reg; edit.expectedReturns = returns; pL[cEL] = edit; // how annoying
                             Proto pr = (Proto)pL[cEL].registers[reg];
                             Logging.Debug($"Moving exeution to proto {pr.bytecodeid}, passing {args} args.", "Luauni:Step");
-                            for(int i = 0; i < args; i++)
+                            if (args == -1)
                             {
-                                pr.registers[i] = pL[cEL].registers[reg + i + 1];
+                                Logging.Debug("Argument count is -1, sending from lastReturn.", "Luauni:Step");
+                                for (int i = 0; i < edit.lastReturn.Length; i++)
+                                {
+                                    pr.registers[i] = edit.lastReturn[i];
+                                }
+                            }
+                            else
+                            {
+                                for (int i = 0; i < args; i++)
+                                {
+                                    pr.registers[i] = edit.registers[reg + i + 1];
+                                }
                             }
                             pL.Add(pr);
                             iP.Add(-1);
@@ -340,14 +352,22 @@ public class Luauni
                     {
                         Logging.Debug($"Proto {pL[cEL].bytecodeid} is returning.", "Luauni:Step");
                         uint begin = Luau.INSN_A(inst);
-                        uint returns = Luau.INSN_B(inst);
+                        uint returns = Luau.INSN_B(inst) - 1;
                         Logging.Debug($"Returning {returns} values.", "Luauni:Step");
                         uint startReg = pL[cEL - 1].callReg;
-                        for (int i = 0; i < returns; i++)
+                        int expects = pL[cEL - 1].expectedReturns;
+                        int tern = expects == -1 ? (int)returns : expects;
+                        Proto edit = pL[cEL - 1];
+                        edit.lastReturn = new object[tern];
+                        for (int i = 0; i < tern; i++)
                         {
-                            pL[cEL - 1].registers[startReg + i] = pL[cEL].registers[begin + i];
+                            object sendback = i < returns ? pL[cEL].registers[begin + i] : null;
+                            pL[cEL - 1].registers[startReg + i] = sendback;
+                            edit.lastReturn[i] = sendback;
                         }
+                        pL[cEL - 1] = edit;
                         pL.RemoveAt(cEL);
+                        iP.RemoveAt(cEL);
                         cEL--;
                     }
                     break;

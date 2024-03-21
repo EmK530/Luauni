@@ -75,7 +75,7 @@ public static class GC
             {
                 output += " ";
             }
-            output += a.ToString();
+            output += a == null ? "nil" : a.ToString();
             first = false;
         }
         Console.WriteLine("\x1b[7;30;47m[Bytecode] " + output + "\x1b[0m ");
