@@ -60,7 +60,7 @@ If there is an ❌ then if it is encountered Luauni will stop execution.<br>
 ❌ `LOP_IDIV` `LOP_IDIVK`<br>
 
 ## Implemented Globals
-<b>`math`</b> - 17.6%<br>
+<b>`math`</b> - 17.6% (6/34)<br>
 ### Topmost Functions
 `print`<br>
 `warn`<br>
