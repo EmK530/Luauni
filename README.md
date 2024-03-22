@@ -13,7 +13,8 @@ This is important because optimization and debug levels use some complicated opc
 
 ## Opcode Support
 This is a list of all the opcodes Luauni currently supports.<br>
-If there is a warning icon then Luauni either ignores it or the implementation is assumed to not be fully correct/done.<br>
+If there is a ⚠️ then Luauni either ignores it or the implementation is assumed to not be fully correct/done.<br>
+If there is an ❌ then if it is encountered Luauni will stop execution.<br>
 ⚠️ `LOP_NOP`<br>
 ⚠️ `LOP_BREAK`<br>
 ✅ `LOP_LOADNIL`<br>
