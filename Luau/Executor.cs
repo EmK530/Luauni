@@ -9,6 +9,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Reflection;
 using System.Runtime.InteropServices;
 
 public class Luauni
@@ -157,6 +158,9 @@ public class Luauni
                         pL[cEL].registers[Luau.INSN_A(inst)] = rg1 + rg2;
                     }
                     break;
+                case LuauOpcode.LOP_AND:
+                    pL[cEL].registers[Luau.INSN_A(inst)] = Luau.LIKELY(pL[cEL].registers[Luau.INSN_B(inst)]) ? pL[cEL].registers[Luau.INSN_C(inst)] : null;
+                    break;
                 case LuauOpcode.LOP_CALL:
                     {
                         uint reg = Luau.INSN_A(inst);
@@ -232,6 +236,45 @@ public class Luauni
                         pL[cEL].registers[Luau.INSN_A(inst)] = rg1 / rg2;
                     }
                     break;
+                case LuauOpcode.LOP_DUPTABLE:
+                    {
+                        pL[cEL].registers[Luau.INSN_A(inst)] = pL[cEL].k[Luau.INSN_D(inst)];
+                        break;
+                    }
+                case LuauOpcode.LOP_FORGPREP:
+                    {
+                        int targ = (int)Luau.INSN_A(inst);
+                        pL[cEL].registers[targ + 2] = 0;
+                        jumpSteps(Luau.INSN_D(inst));
+                    }
+                    break;
+                case LuauOpcode.LOP_FORGLOOP:
+                    {
+                        int targ = (int)Luau.INSN_A(inst);
+                        int jmp = Luau.INSN_D(inst);
+                        Type t = pL[cEL].registers[targ].GetType();
+                        uint varcount = nextInst();
+                        (bool, object[]) get;
+                        if (t == typeof(TableIterator))
+                        {
+                            TableIterator iter = (TableIterator)pL[cEL].registers[targ];
+                            get = iter.Get();
+                        } else
+                        {
+                            ArrayIterator iter = (ArrayIterator)pL[cEL].registers[targ];
+                            get = iter.Get();
+                        }
+                        if (get.Item1)
+                        {
+                            object[] array = get.Item2;
+                            for (int i = 0; i < varcount; i++)
+                            {
+                                pL[cEL].registers[targ + 3 + i] = (i < array.Length ? array[i] : null);
+                            }
+                            jumpSteps(jmp - 1);
+                        }
+                    }
+                    break;
                 case LuauOpcode.LOP_FORNPREP:
                     {
                         uint regId = Luau.INSN_A(inst);
@@ -239,7 +282,6 @@ public class Luauni
                         double step = (double)pL[cEL].registers[regId + 1];
                         double idx = (double)pL[cEL].registers[regId + 2];
                         jumpSteps((step > 0 ? idx <= limit : limit <= idx) ? 0 : Luau.INSN_D(inst));
-                        //return (null, 0);
                     }
                     break;
                 case LuauOpcode.LOP_FORNLOOP:
@@ -259,6 +301,35 @@ public class Luauni
                     {
                         string key = (string)pL[cEL].k[nextInst()];
                         pL[cEL].registers[Luau.INSN_A(inst)] = Globals.Get(key);
+                        break;
+                    }
+                case LuauOpcode.LOP_GETTABLE:
+                    {
+                        object rg = pL[cEL].registers[Luau.INSN_B(inst)];
+                        if (rg.GetType() == typeof(object[]))
+                        {
+                            object[] arr = (object[])rg;
+                            int index = Convert.ToInt32((double)pL[cEL].registers[Luau.INSN_C(inst)]) - 1;
+                            pL[cEL].registers[Luau.INSN_A(inst)] = index < arr.Length && index >= 0 ? arr[index] : null;
+                        } else if (rg.GetType() == typeof(Dictionary<string, object>))
+                        {
+                            Dictionary<string, object> arr = (Dictionary<string, object>)rg;
+                            object idx = pL[cEL].registers[Luau.INSN_C(inst)];
+                            if (idx.GetType() == typeof(string))
+                            {
+                                pL[cEL].registers[Luau.INSN_A(inst)] = arr[(string)pL[cEL].registers[Luau.INSN_C(inst)]];
+                            } else
+                            {
+                                Logging.Error($"Attempt to index table with {idx.GetType()}", "Luauni:Step");
+                                ready = false;
+                                return;
+                            }
+                        } else
+                        {
+                            Logging.Error($"Cannot perform indexing on a {rg.GetType()}", "Luauni:Step");
+                            ready = false;
+                            return;
+                        }
                         break;
                     }
                 case LuauOpcode.LOP_GETTABLEKS:
@@ -339,6 +410,26 @@ public class Luauni
                         jumpSteps(Luau.INSN_D(inst) - 1);
                     }
                     break;
+                case LuauOpcode.LOP_LENGTH:
+                    {
+                        object reg = pL[cEL].registers[Luau.INSN_B(inst)];
+                        Type tp = reg.GetType();
+                        if (tp == typeof(string))
+                        {
+                            pL[cEL].registers[Luau.INSN_A(inst)] = (double)((string)reg).Length;
+                        }
+                        else if (tp == typeof(object[]))
+                        {
+                            pL[cEL].registers[Luau.INSN_A(inst)] = (double)((object[])reg).Length;
+                        }
+                        else
+                        {
+                            Logging.Error($"attempt to get length of a {tp}", "Luauni:Step");
+                            ready = false;
+                            return;
+                        }
+                    }
+                    break;
                 case LuauOpcode.LOP_LOADB:
                     pL[cEL].registers[Luau.INSN_A(inst)] = Luau.INSN_B(inst)==1;
                     jumpSteps((int)Luau.INSN_C(inst));
@@ -372,6 +463,15 @@ public class Luauni
                     break;
                 case LuauOpcode.LOP_NEWCLOSURE:
                     pL[cEL].registers[Luau.INSN_A(inst)] = pL[cEL].p[Luau.INSN_D(inst)];
+                    break;
+                case LuauOpcode.LOP_NEWTABLE:
+                    pL[cEL].registers[Luau.INSN_A(inst)] = new object[nextInst()];
+                    break;
+                case LuauOpcode.LOP_NOT:
+                    pL[cEL].registers[Luau.INSN_A(inst)] = !Luau.LIKELY(pL[cEL].registers[Luau.INSN_B(inst)]);
+                    break;
+                case LuauOpcode.LOP_OR:
+                    pL[cEL].registers[Luau.INSN_A(inst)] = Luau.LIKELY(pL[cEL].registers[Luau.INSN_B(inst)]) ? pL[cEL].registers[Luau.INSN_B(inst)] : pL[cEL].registers[Luau.INSN_C(inst)];
                     break;
                 case LuauOpcode.LOP_POW:
                     {
@@ -425,6 +525,41 @@ public class Luauni
                 case LuauOpcode.LOP_SETGLOBAL:
                     {
                         Globals.Set((string)pL[cEL].k[nextInst()], pL[cEL].registers[Luau.INSN_A(inst)]);
+                    }
+                    break;
+                case LuauOpcode.LOP_SETLIST:
+                    {
+                        int valcount = (int)Luau.INSN_C(inst) - 1;
+                        object[] reg = (object[])pL[cEL].registers[Luau.INSN_A(inst)];
+                        uint src = Luau.INSN_B(inst);
+                        uint aux = nextInst();
+                        for (int i = 0; i < valcount; i++)
+                        {
+                            reg[aux + i - 1] = pL[cEL].registers[src + i];
+                        }
+                    }
+                    break;
+                case LuauOpcode.LOP_SETTABLE:
+                    {
+                        object idx = pL[cEL].registers[Luau.INSN_C(inst)];
+                        Type t = idx.GetType();
+                        Logging.Debug(t);
+                        if (t == typeof(string))
+                        {
+                            ((Dictionary<string, object>)pL[cEL].registers[Luau.INSN_B(inst)])[(string)idx] = pL[cEL].registers[Luau.INSN_A(inst)];
+                        }
+                        else
+                        {
+                            int index = Convert.ToInt32((double)idx) - 1;
+                            object[] src = (object[])pL[cEL].registers[Luau.INSN_B(inst)];
+                            int len = src.Length;
+                            if (len < index + 1) {
+                                object[] nw = new object[index + 1];
+                                Array.Copy(src, 0, nw, 0, len);
+                                pL[cEL].registers[Luau.INSN_B(inst)] = nw;
+                            }
+                            ((object[])pL[cEL].registers[Luau.INSN_B(inst)])[index] = pL[cEL].registers[Luau.INSN_A(inst)];
+                        }
                     }
                     break;
                 case LuauOpcode.LOP_SUB:

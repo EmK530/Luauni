@@ -2,6 +2,7 @@
 #pragma warning disable CS8601
 #pragma warning disable CS8602
 #pragma warning disable CS8603
+#pragma warning disable CS8618
 #pragma warning disable CS8625
 
 global using Instruction = System.UInt32;
@@ -75,6 +76,54 @@ public struct CallResults
     }
 }
 
+public class TableIterator
+{
+    private object[] table;
+    private int index = 0;
+
+    public TableIterator(object[] table)
+    {
+        this.table = table;
+        this.index = -1;
+    }
+
+    public (bool, object[]) Get()
+    {
+        this.index++;
+        if (this.index < this.table.Length)
+        {
+            return (true, new object[2] { this.index + 1, this.table[this.index] });
+        } else
+        {
+            return (false, new object[0]);
+        }
+    }
+}
+
+public class ArrayIterator
+{
+    private Dictionary<string, object> array;
+    private Dictionary<string, object>.Enumerator e;
+
+    public ArrayIterator(Dictionary<string, object> array)
+    {
+        this.array = array;
+        e = array.GetEnumerator();
+    }
+
+    public (bool, object[]) Get()
+    {
+        if (e.MoveNext())
+        {
+            return (true, new object[2] { e.Current.Key, e.Current.Value });
+        }
+        else
+        {
+            return (false, new object[0]);
+        }
+    }
+}
+
 public static class Luau
 {
     public static uint INSN_OP(Instruction insn) => insn & 0xFF;
@@ -98,6 +147,15 @@ public static class Luau
         {
             return v1 == v2;
         }
+    }
+    public static bool LIKELY(object v1)
+    {
+        if (v1 == null)
+            return false;
+        Type t = v1.GetType();
+        if (t == typeof(bool))
+            return (bool)v1;
+        return true;
     }
     public static double safeNum(object inp)
     {
@@ -221,13 +279,13 @@ public static class ParseEssentials
                     p.k[j] = rd;
                     break;
                 case LuauBytecodeTag.LBC_CONSTANT_TABLE:
-                    Logging.Warn("Found unimplemented table constant.", "Luauni:Parse:PP");
-                    //TODO: understand what the hell this is and don't skip
+                    Dictionary<string, object> kt = new Dictionary<string, object>(); // key table
                     int keys = br.ReadVariableLen();
                     for (int k = 0; k < keys; k++)
                     {
-                        br.ReadVariableLen();
+                        kt.Add(tbl[br.ReadVariableLen()],null);
                     }
+                    p.k[j] = kt;
                     break;
                 case LuauBytecodeTag.LBC_CONSTANT_IMPORT:
                     Logging.Warn("Found unimplemented import constant.", "Luauni:Parse:PP");

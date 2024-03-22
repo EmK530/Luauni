@@ -101,6 +101,23 @@ public static class GC
         Console.WriteLine("\x1b[7;30;47m[Bytecode] " + output + "\x1b[0m ");
         return new CallResults();
     }
+    public static CallResults warn(ref CallData dat)
+    {
+        string output = "";
+        bool first = true;
+        object[] inp = Luau.getAllArgs(ref dat);
+        foreach (object arg in inp)
+        {
+            if (!first)
+            {
+                output += " ";
+            }
+            output += Luau.accurate_tostring(arg);
+            first = false;
+        }
+        Console.WriteLine("\x1b[7;30;43m[Bytecode] " + output + "\x1b[0m ");
+        return new CallResults();
+    }
     public static CallResults tonumber(ref CallData dat)
     {
         object[] inp = Luau.getAllArgs(ref dat);
@@ -121,6 +138,20 @@ public static class GC
     {
         object[] inp = Luau.getAllArgs(ref dat);
         Luau.returnToProto(ref dat, new object[1] { (inp[0] == null ? "nil" : inp[0].ToString()) });
+        return new CallResults();
+    }
+    public static CallResults pairs(ref CallData dat)
+    {
+        object[] inp = Luau.getAllArgs(ref dat);
+        if (inp[0].GetType() == typeof(object[]))
+        {
+            var iter = new TableIterator((object[])inp[0]);
+            Luau.returnToProto(ref dat, new object[3] { iter, inp[0], null });
+        } else
+        {
+            var iter = new ArrayIterator((Dictionary<string, object>)inp[0]);
+            Luau.returnToProto(ref dat, new object[3] { iter, inp[0], null });
+        }
         return new CallResults();
     }
     public static class math
