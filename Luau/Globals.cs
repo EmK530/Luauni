@@ -95,7 +95,7 @@ public static class GC
             {
                 output += " ";
             }
-            output += arg == null ? "nil" : arg.ToString();
+            output += Luau.accurate_tostring(arg);
             first = false;
         }
         Console.WriteLine("\x1b[7;30;47m[Bytecode] " + output + "\x1b[0m ");
@@ -191,7 +191,12 @@ public static class GC
         //missing sign
         //missing sin
         //missing sinh
-        //missing sqrt
+        public static CallResults sqrt(ref CallData dat)
+        {
+            object[] inp = Luau.getAllArgs(ref dat);
+            Luau.returnToProto(ref dat, new object[1] { Math.Sqrt(Luau.safeNum(inp[0])) });
+            return new CallResults();
+        }
         public static CallResults tan(ref CallData dat)
         {
             object[] inp = Luau.getAllArgs(ref dat);

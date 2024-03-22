@@ -1,8 +1,8 @@
 #pragma warning disable CS8600
 #pragma warning disable CS8601
-#pragma warning disable CS8618
+#pragma warning disable CS8602
+#pragma warning disable CS8603
 #pragma warning disable CS8625
-#pragma warning disable CS8981
 
 global using Instruction = System.UInt32;
 using System;
@@ -137,6 +137,17 @@ public static class Luau
         {
             return d.initiator.lastReturn;
         }
+    }
+    public static string accurate_tostring(object arg)
+    {
+        if (arg == null)
+            return "nil";
+        Type tp = arg.GetType();
+        if (tp == typeof(bool))
+            return (bool)arg ? "true" : "false";
+        if (tp == typeof(double))
+            return arg.ToString().Replace(",", ".");
+        return arg.ToString();
     }
     public static ulong randstate = 0;
     public static uint pcg32_random()
