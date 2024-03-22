@@ -38,7 +38,7 @@ If there is an ❌ then if it is encountered Luauni will stop execution.<br>
 ✅ `LOP_AND` `LOP_OR`<br>
 ❌ `LOP_ANDK` `LOP_ORK`<br>
 ✅ `LOP_CONCAT`<br>
-❌ `LOP_MINUS`<br>
+✅ `LOP_MINUS`<br>
 ✅ `LOP_NOT` `LOP_LENGTH`<br>
 ✅ `LOP_NEWTABLE`<br>
 ✅ `LOP_DUPTABLE`<br>
@@ -60,7 +60,7 @@ If there is an ❌ then if it is encountered Luauni will stop execution.<br>
 ❌ `LOP_IDIV` `LOP_IDIVK`<br>
 
 ## Implemented Globals
-<b>`math`</b> - 17.6% (6/34)<br>
+<b>`math`</b> - 20.6% (7/34)<br>
 ### Topmost Functions
 `print`<br>
 `warn`<br>

@@ -134,14 +134,30 @@ public static class Luau
     public static int INSN_E(Instruction insn) => (int)(insn >> 8);
     public static bool EQUAL(object v1, object v2)
     {
-        Type type = v1.GetType();
-        if (type == typeof(double))
+        Type t1 = v1.GetType();
+        Type t2 = v2.GetType();
+        if (t1 == typeof(double) && t2 == typeof(double))
         {
             return (double)v1 == (double)v2;
         }
-        else if (type == typeof(string))
+        else if (t1 == typeof(string) && t2 == typeof(string))
         {
             return (string)v1 == (string)v2;
+        }
+        else if (t1 == typeof(double) || t2 == typeof(double))
+        {
+            double d1 = 0;
+            double d2 = 0;
+            if (t1 == typeof(double))
+            {
+                d1 = (double)v1;
+                if(double.TryParse((string)v2, out double c2)) { d2 = c2; } else { return false; }
+            } else
+            {
+                d2 = (double)v2;
+                if (double.TryParse((string)v1, out double c1)) { d1 = c1; } else { return false; }
+            }
+            return d1 == d2;
         }
         else
         {
@@ -204,7 +220,11 @@ public static class Luau
         if (tp == typeof(bool))
             return (bool)arg ? "true" : "false";
         if (tp == typeof(double))
+        {
+            if (double.IsNaN((double)arg))
+                return "nan";
             return arg.ToString().Replace(",", ".");
+        }
         return arg.ToString();
     }
     public static ulong randstate = 0;

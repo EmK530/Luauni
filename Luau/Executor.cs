@@ -447,18 +447,30 @@ public class Luauni
                 case LuauOpcode.LOP_MOVE:
                     pL[cEL].registers[Luau.INSN_A(inst)] = pL[cEL].registers[Luau.INSN_B(inst)];
                     break;
-                case LuauOpcode.LOP_MUL:
-                    {
-                        double rg1 = (double)pL[cEL].registers[Luau.INSN_B(inst)];
-                        double rg2 = (double)pL[cEL].registers[Luau.INSN_C(inst)];
-                        pL[cEL].registers[Luau.INSN_A(inst)] = rg1 * rg2;
-                    }
+                case LuauOpcode.LOP_MINUS:
+                    pL[cEL].registers[Luau.INSN_A(inst)] = -(double)pL[cEL].registers[Luau.INSN_B(inst)];
                     break;
                 case LuauOpcode.LOP_MOD:
                     {
                         double rg1 = (double)pL[cEL].registers[Luau.INSN_B(inst)];
                         double rg2 = (double)pL[cEL].registers[Luau.INSN_C(inst)];
-                        pL[cEL].registers[Luau.INSN_A(inst)] = rg1 % rg2;
+                        double result = 0;
+                        if (double.IsInfinity(rg2))
+                        {
+                            result = double.NaN;
+                        } else
+                        {
+                            result = rg1 % rg2;
+                            if (rg2 < 0 && result >= 0) { result += rg2; }
+                        }
+                        pL[cEL].registers[Luau.INSN_A(inst)] = result;
+                    }
+                    break;
+                case LuauOpcode.LOP_MUL:
+                    {
+                        double rg1 = (double)pL[cEL].registers[Luau.INSN_B(inst)];
+                        double rg2 = (double)pL[cEL].registers[Luau.INSN_C(inst)];
+                        pL[cEL].registers[Luau.INSN_A(inst)] = rg1 * rg2;
                     }
                     break;
                 case LuauOpcode.LOP_NEWCLOSURE:

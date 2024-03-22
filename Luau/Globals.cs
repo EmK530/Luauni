@@ -169,6 +169,7 @@ public static class GC
         //missing floor
         //missing fmod
         //missing frexp
+        public static double huge = double.PositiveInfinity;
         //missing ldexp
         //missing log
         //missing log10
