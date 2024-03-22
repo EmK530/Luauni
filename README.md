@@ -13,7 +13,7 @@ This is important because optimization and debug levels use some complicated opc
 
 ## Opcode Support
 This is a list of all the opcodes Luauni currently supports.<br>
-If there is a warning icon then Luauni either ignores it or the implementation isn't fully correct/done.<br>
+If there is a warning icon then Luauni either ignores it or the implementation is assumed to not be fully correct/done.<br>
 ⚠️ `LOP_NOP`<br>
 ⚠️ `LOP_BREAK`<br>
 ✅ `LOP_LOADNIL`<br>
@@ -43,7 +43,7 @@ If there is a warning icon then Luauni either ignores it or the implementation i
 ✅ `LOP_DUPTABLE`<br>
 ✅ `LOP_SETLIST`<br>
 ✅ `LOP_FORNPREP` `LOP_FORNLOOP`<br>
-✅ `LOP_FORGPREP` `LOP_FORGLOOP`<br>
+⚠️ `LOP_FORGPREP` `LOP_FORGLOOP`<br>
 ❌ `LOP_FORGLOOP_INEXT` `LOP_DEP_FORGLOOP_INEXT`<br>
 ❌ `LOP_FORGPREP_NEXT`<br>
 ❌ `LOP_NATIVECALL`<br>
