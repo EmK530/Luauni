@@ -1,15 +1,11 @@
-# Luauni
-A Luau bytecode interpreter programmed with the intention of being used for a Unity port of a Roblox game.
+# Luauni - Unity Branch
+This is the branch of Luauni where development goes on in Unity.<br>
+The current goal is trying to emulate Robot 64.
 
-## Requirements
-<b>luau-compile.exe with Luau Version 5 and Type Version 1</b><br>
-This is what Luauni is being designed for and while it allows other versions, it may cause issues.
-
-## Note
-This is the new remake of Luauni where I plan to make better execution now that I know what is required for it to work in Unity.<br>
-Opcode support is even worse here because I just started.<br><br>
-<b>When compiling a script for Luauni, please compile with -O0 and -g0</b><br>
-This is important because optimization and debug levels use some complicated opcodes that may not be supported ever.
+## Emulation Progress
+In here progress will be shown on emulating Robot 64, how far it has gone in the main function and what errored.<br>
+`Reached instruction 123 / 18657`<br>
+`Error: InputBegan is not a valid member of UserInputService`
 
 ## Opcode Support
 This is a list of all the opcodes Luauni currently supports.<br>
