@@ -25,9 +25,10 @@ If there is an ❌ then if it is encountered Luauni will stop execution.<br>
 ❌ `LOP_GETIMPORT`<br>
 ✅ `LOP_GETTABLE` `LOP_SETTABLE`<br>
 ✅ `LOP_GETTABLEKS`<br>
-❌ `LOP_SETTABLEKS` `LOP_GETTABLEN` `LOP_SETTABLEN`<br>
+✅ `LOP_SETTABLEKS`<br>
+❌ `LOP_GETTABLEN` `LOP_SETTABLEN`<br>
 ✅ `LOP_NEWCLOSURE`<br>
-❌ `LOP_NAMECALL`<br>
+✅ `LOP_NAMECALL`<br>
 ✅ `LOP_CALL`<br>
 ✅ `LOP_RETURN`<br>
 ✅ `LOP_JUMP` `LOP_JUMPBACK`<br>
