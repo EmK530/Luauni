@@ -169,9 +169,14 @@ public static class Luau
         if (v1 == null)
             return false;
         Type t = v1.GetType();
-        if (t == typeof(bool))
+        if (t == typeof(bool)) {
             return (bool)v1;
-        return true;
+        } else if (t == typeof(double)){
+            return ((double)v1)==0
+        } else if (t == typeof(string)){
+            return ((string)v1)==""
+        }
+        return false;
     }
     public static double safeNum(object inp)
     {
