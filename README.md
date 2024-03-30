@@ -63,4 +63,4 @@ If there is an ❌ then if it is encountered Luauni will stop execution.<br>
 `warn`<br>
 `tostring`<br>
 `tonumber`<br>
-`pairs`<br>
+`pairs` ⚠️<br>
