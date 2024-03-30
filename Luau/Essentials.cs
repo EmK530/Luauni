@@ -1,29 +1,16 @@
-#pragma warning disable CS8600
-#pragma warning disable CS8601
-#pragma warning disable CS8602
-#pragma warning disable CS8603
-#pragma warning disable CS8618
-#pragma warning disable CS8625
+#pragma warning disable CS8632
 
-global using Instruction = System.UInt32;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Runtime.ConstrainedExecution;
 using System.Runtime.InteropServices;
-using static System.Runtime.InteropServices.JavaScript.JSType;
+using Unity.VisualScripting;
+using UnityEngine;
 
-public struct CommonHeader
+public class Proto
 {
-    public byte tt;
-    public byte marked;
-    public byte memcat;
-}
-
-public struct Proto
-{
-    public CommonHeader hdr;
     public byte nups;
     public byte numparams;
     public byte is_vararg;
@@ -34,46 +21,29 @@ public struct Proto
     public int sizek;
     public int sizep;
     public Proto[] p;
-    public Instruction[] code;
-    public Instruction[] codeentry;
+    public uint[] code;
+    public uint[] codeentry;
     public object[] k; // danger
     public object?[] registers; // custom
     public uint callReg;
     public int expectedReturns;
     public object[] lastReturn;
+    public object recentNameCalledRegister;
+    public bool globalErrored = false;
 }
 
-public enum CallStatus
-{
-    Finished = 0,
-    Yielded = 1,
-    Errored = 2
-}
-
-public struct NamedDict
+public class NamedDict
 {
     public string name;
     public Dictionary<string, object> dict;
 }
 
-public ref struct CallData
+public class CallData
 {
-    public ref Proto initiator;
+    public Proto initiator;
     public uint funcRegister;
     public int args;
     public int returns;
-}
-
-public struct CallResults
-{
-    public CallStatus status;
-    public float yieldDuration;
-
-    public CallResults()
-    {
-        status = CallStatus.Finished;
-        yieldDuration = 0f;
-    }
 }
 
 public class TableIterator
@@ -126,12 +96,12 @@ public class ArrayIterator
 
 public static class Luau
 {
-    public static uint INSN_OP(Instruction insn) => insn & 0xFF;
-    public static uint INSN_A(Instruction insn) => (insn >> 8) & 0xFF;
-    public static uint INSN_B(Instruction insn) => (insn >> 16) & 0xFF;
-    public static uint INSN_C(Instruction insn) => (insn >> 24) & 0xFF;
-    public static int INSN_D(Instruction insn) => (int)((int)insn >> 16);
-    public static int INSN_E(Instruction insn) => (int)(insn >> 8);
+    public static uint INSN_OP(uint insn) => insn & 0xFF;
+    public static uint INSN_A(uint insn) => (insn >> 8) & 0xFF;
+    public static uint INSN_B(uint insn) => (insn >> 16) & 0xFF;
+    public static uint INSN_C(uint insn) => (insn >> 24) & 0xFF;
+    public static int INSN_D(uint insn) => (int)((int)insn >> 16);
+    public static int INSN_E(uint insn) => (int)(insn >> 8);
     public static bool EQUAL(object v1, object v2)
     {
         Type t1 = v1.GetType();
@@ -178,6 +148,27 @@ public static class Luau
         }
         return false;
     }
+    public static object SAFEINDEX(object v1, string key)
+    {
+        object inner = v1;
+        if (inner == null)
+            return null;
+        foreach (string k in key.Split("."))
+        {
+            Dictionary<string, object> c1 = (Dictionary<string, object>)inner;
+            if (c1.TryGetValue(k, out object t1))
+            {
+                if (t1 == null)
+                    return null;
+                inner = t1;
+            }
+            else
+            {
+                return null;
+            }
+        }
+        return inner;
+    }
     public static double safeNum(object inp)
     {
         if (inp == null)
@@ -192,15 +183,13 @@ public static class Luau
     public static void returnToProto(ref CallData p, object[] args)
     {
         int tern = p.returns == -1 ? args.Length : p.returns;
-        Proto copy = p.initiator;
-        copy.lastReturn = new object[tern];
+        p.initiator.lastReturn = new object[tern];
         for (int i = 0; i < tern; i++)
         {
             object tern2 = i < args.Length ? args[i] : null;
-            copy.registers[p.funcRegister + i] = tern2;
-            copy.lastReturn[i] = tern2;
+            p.initiator.registers[p.funcRegister + i] = tern2;
+            p.initiator.lastReturn[i] = tern2;
         }
-        p.initiator = copy;
     }
     public static object[] getAllArgs(ref CallData d)
     {

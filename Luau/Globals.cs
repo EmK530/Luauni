@@ -14,7 +14,7 @@ using System.Reflection;
 public static class Globals
 {
     public static Dictionary<string, object> list = new Dictionary<string, object>();
-    public delegate CallResults Standard(ref CallData data);
+    public delegate System.Collections.IEnumerator Standard(CallData data);
 
     private static bool initialized = false;
     public static bool IsInitialized()
@@ -28,7 +28,7 @@ public static class Globals
         IterateClass(typeof(GC), list, "", true);
         initialized = true;
     }
-    private static void IterateClass(Type i, Dictionary<string, object> contain, string path, bool top)
+    public static void IterateClass(Type i, Dictionary<string, object> contain, string path, bool top)
     {
         foreach (Type t in i.GetNestedTypes())
         {
@@ -84,7 +84,7 @@ public static class Globals
 
 public static class GC
 {
-    public static CallResults print(ref CallData dat)
+    public static System.Collections.IEnumerator print(CallData dat)
     {
         string output = "";
         bool first = true;
@@ -98,10 +98,10 @@ public static class GC
             output += Luau.accurate_tostring(arg);
             first = false;
         }
-        Console.WriteLine("\x1b[7;30;47m[Bytecode] " + output + "\x1b[0m ");
-        return new CallResults();
+        UnityEngine.Debug.Log("[Bytecode] " + output);
+        yield break;
     }
-    public static CallResults warn(ref CallData dat)
+    public static System.Collections.IEnumerator warn(CallData dat)
     {
         string output = "";
         bool first = true;
@@ -115,10 +115,10 @@ public static class GC
             output += Luau.accurate_tostring(arg);
             first = false;
         }
-        Console.WriteLine("\x1b[7;30;43m[Bytecode] " + output + "\x1b[0m ");
-        return new CallResults();
+        UnityEngine.Debug.LogWarning("[Bytecode] " + output);
+        yield break;
     }
-    public static CallResults tonumber(ref CallData dat)
+    public static System.Collections.IEnumerator tonumber(CallData dat)
     {
         object[] inp = Luau.getAllArgs(ref dat);
         Type tp = inp[0].GetType();
@@ -132,15 +132,15 @@ public static class GC
         {
             Luau.returnToProto(ref dat, new object[1] { null });
         }
-        return new CallResults();
+        yield break;
     }
-    public static CallResults tostring(ref CallData dat)
+    public static System.Collections.IEnumerator tostring(CallData dat)
     {
         object[] inp = Luau.getAllArgs(ref dat);
         Luau.returnToProto(ref dat, new object[1] { (inp[0] == null ? "nil" : inp[0].ToString()) });
-        return new CallResults();
+        yield break;
     }
-    public static CallResults pairs(ref CallData dat)
+    public static System.Collections.IEnumerator pairs(CallData dat)
     {
         object[] inp = Luau.getAllArgs(ref dat);
         if (inp[0].GetType() == typeof(object[]))
@@ -152,8 +152,10 @@ public static class GC
             var iter = new ArrayIterator((Dictionary<string, object>)inp[0]);
             Luau.returnToProto(ref dat, new object[3] { iter, inp[0], null });
         }
-        return new CallResults();
+        yield break;
     }
+    public static Instance game;
+    public static Dictionary<string, object> _G = new Dictionary<string, object>();
     public static class math
     {
         //missing abs
@@ -180,7 +182,7 @@ public static class GC
         public static double pi = 3.1415926535897931;
         //missing pow
         //missing rad
-        public static CallResults random(ref CallData dat)
+        public static System.Collections.IEnumerator random(CallData dat)
         {
             object[] inp = Luau.getAllArgs(ref dat);
             switch (dat.args)
@@ -188,52 +190,52 @@ public static class GC
                 case 0:
                     {
                         Luau.returnToProto(ref dat, new object[1] { NMath.ldexp(Luau.pcg32_random() | ((ulong)Luau.pcg32_random() << 32), -64) });
-                        return new CallResults();
+                        yield break;
                     }
                 case 1:
                     {
                         Luau.returnToProto(ref dat, new object[1] { (double)(1 + ((Convert.ToUInt64(inp[0]) * Luau.pcg32_random()) >> 32)) });
-                        return new CallResults();
+                        yield break;
                     }
                 case 2:
                     {
                         int l = Convert.ToInt32((double)inp[0]);
                         int u = Convert.ToInt32((double)inp[1]);
                         Luau.returnToProto(ref dat, new object[1] { (double)(l + (int)((((uint)u - (uint)l + 1UL) * Luau.pcg32_random()) >> 32)) });
-                        return new CallResults();
+                        yield break;
                     }
                 default:
                     Logging.Error("Unsupported number of parameters! Returning 0.", "Globals:math.random");
                     Luau.returnToProto(ref dat, new object[1] { 0d });
-                    return new CallResults();
+                    yield break;
             }
         }
-        public static CallResults randomseed(ref CallData dat)
+        public static System.Collections.IEnumerator randomseed(CallData dat)
         {
             object[] inp = Luau.getAllArgs(ref dat);
             Luau.pcg32_seed(Convert.ToUInt64((double)inp[0]));
-            return new CallResults();
+            yield break;
         }
-        public static CallResults round(ref CallData dat)
+        public static System.Collections.IEnumerator round(CallData dat)
         {
             object[] inp = Luau.getAllArgs(ref dat);
             Luau.returnToProto(ref dat, new object[1] { Math.Round(Luau.safeNum(inp[0])) });
-            return new CallResults();
+            yield break;
         }
         //missing sign
         //missing sin
         //missing sinh
-        public static CallResults sqrt(ref CallData dat)
+        public static System.Collections.IEnumerator sqrt(CallData dat)
         {
             object[] inp = Luau.getAllArgs(ref dat);
             Luau.returnToProto(ref dat, new object[1] { Math.Sqrt(Luau.safeNum(inp[0])) });
-            return new CallResults();
+            yield break;
         }
-        public static CallResults tan(ref CallData dat)
+        public static System.Collections.IEnumerator tan(CallData dat)
         {
             object[] inp = Luau.getAllArgs(ref dat);
             Luau.returnToProto(ref dat, new object[1] { Math.Tan(Luau.safeNum(inp[0])) });
-            return new CallResults();
+            yield break;
         }
         //missing tanh
     }
