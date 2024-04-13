@@ -44,16 +44,6 @@ public class Luauni : MonoBehaviour
         }
     }
 
-    void Update()
-    {
-        tx.text = $"Luauni Debug\nProto 214 Position: {iP[cEL]} / {protos[214].sizecode}\nRecent Error: {Logging.LastError}";
-        if (!ready && !printed)
-        {
-            Logging.Warn($"Proto 214 emulated progress: {iP[cEL]} instructions / {protos[214].sizecode} instructions.");
-            printed = true;
-        }
-    }
-
     public bool IsReady()
     {
         return ready;
@@ -66,6 +56,16 @@ public class Luauni : MonoBehaviour
 
     private int mainProtoId;
     private Proto mainProto;
+
+    void Update()
+    {
+        tx.text = $"Luauni Debug\nProto {mainProtoId} Position: {iP[cEL]} / {protos[mainProtoId].sizecode}\nRecent Error: {Logging.LastError}";
+        if (!ready && !printed)
+        {
+            Logging.Warn($"Proto {mainProtoId} emulated progress: {iP[cEL]} instructions / {protos[mainProtoId].sizecode} instructions.");
+            printed = true;
+        }
+    }
 
     private void Parse()
     {
