@@ -142,9 +142,9 @@ public static class Luau
         if (t == typeof(bool)) {
             return (bool)v1;
         } else if (t == typeof(double)){
-            return ((double)v1)==0
+            return ((double)v1)==0;
         } else if (t == typeof(string)){
-            return ((string)v1)==""
+            return ((string)v1)=="";
         }
         return false;
     }
