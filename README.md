@@ -4,7 +4,7 @@ The current goal is trying to emulate Robot 64.
 
 ## Emulation Progress
 In here progress will be shown on emulating Robot 64, how far it has gone in the main function and what errored.<br>
-`Reached instruction 123 / 18657`<br>
+`Reached instruction 124 / 18657`<br>
 `Error: InputBegan is not a valid member of UserInputService`
 
 ## Opcode Support
