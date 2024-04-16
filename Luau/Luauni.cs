@@ -35,7 +35,7 @@ public class Luauni : MonoBehaviour
         {
             br = new ByteReader(File.ReadAllBytes(Application.streamingAssetsPath + "\\Scripts\\" + script + ".bin"));
             Parse();
-            if(ready)
+            if (ready)
                 StartCoroutine(Execute());
         } else
         {
@@ -59,10 +59,10 @@ public class Luauni : MonoBehaviour
 
     void Update()
     {
-        tx.text = $"Luauni Debug\nProto {mainProtoId} Position: {iP[cEL]} / {protos[mainProtoId].sizecode}\nRecent Error: {Logging.LastError}";
+        tx.text = $"Luauni Debug\nProto {mainProtoId} Position: {iP[0]} / {protos[0].sizecode}\nRecent Error: {Logging.LastError}";
         if (!ready && !printed)
         {
-            Logging.Warn($"Proto {mainProtoId} emulated progress: {iP[cEL]} instructions / {protos[mainProtoId].sizecode} instructions.");
+            Logging.Warn($"Proto {mainProtoId} emulated progress: {iP[0]} instructions / {protos[0].sizecode} instructions.");
             printed = true;
         }
     }
@@ -129,6 +129,7 @@ public class Luauni : MonoBehaviour
         Logging.Debug($"Main proto ID: {mainProtoId}", "Luauni:Parse");
 
         pL.Add(mainProto);
+        cL.Add(null);
         iP.Add(-1);
         ready = true;
         Logging.Print("Bytecode loaded, ready for execution.", "Luauni:Parse");
@@ -136,7 +137,9 @@ public class Luauni : MonoBehaviour
 
     public int cEL = 0; // current execution layer
     public List<Proto> pL = new List<Proto>(); // proto layers
+    public List<Closure?> cL = new List<Closure?>(); // closure layers
     public List<int> iP = new List<int>(); // instruction position
+    public Closure lCC;
 
     private uint nextInst()
     {
@@ -167,6 +170,7 @@ public class Luauni : MonoBehaviour
                 case LuauOpcode.LOP_BREAK:
                 case LuauOpcode.LOP_PREPVARARGS:
                 case LuauOpcode.LOP_GETVARARGS:
+                case LuauOpcode.LOP_CLOSEUPVALS:
                     Logging.Warn($"Ignoring opcode not planned to support: {opcode}", "Luauni:Step");
                     break;
                 case LuauOpcode.LOP_ADD:
@@ -211,10 +215,12 @@ public class Luauni : MonoBehaviour
                                 yield break;
                             }
                             pL[cEL] = sendProto;
-                        } else if (regType == typeof(Proto))
+                        } else if (regType == typeof(Closure))
                         {
+
                             Proto edit = pL[cEL]; edit.callReg = reg; edit.expectedReturns = returns; pL[cEL] = edit; // how annoying
-                            Proto pr = (Proto)pL[cEL].registers[reg];
+                            Closure cl = (Closure)pL[cEL].registers[reg];
+                            Proto pr = ((Closure)pL[cEL].registers[reg]).p;
                             Logging.Debug($"Moving exeution to proto {pr.bytecodeid}, passing {args} args.", "Luauni:Step");
                             if (args == -1)
                             {
@@ -233,11 +239,36 @@ public class Luauni : MonoBehaviour
                             }
                             pL.Add(pr);
                             iP.Add(-1);
+                            cL.Add(cl);
                             cEL++;
                         } else
                         {
                             Logging.Warn("Unsupported function type: " + regType);
                         }
+                        break;
+                    }
+                case LuauOpcode.LOP_CAPTURE:
+                    {
+                        LuauCaptureType cap = (LuauCaptureType)Luau.INSN_A(inst);
+                        if(lCC.loadedUps >= lCC.p.nups)
+                        {
+                            Logging.Error($"Cannot CAPTURE upvalue because nups limit has been exceeded for the proto.", "Luauni:Step");
+                            ready = false;
+                            yield break;
+                        }
+                        Logging.Debug($"Capturing upvalue of type {cap}", "Luauni:Step");
+                        if(cap == LuauCaptureType.LCT_VAL)
+                        {
+                            lCC.upvals[lCC.loadedUps] = pL[cEL].registers[Luau.INSN_B(inst)];
+                        } else
+                        {
+                            lCC.upvals[lCC.loadedUps] = new UpvalREF()
+                            {
+                                src = pL[cEL],
+                                register = Luau.INSN_B(inst)
+                            };
+                        }
+                        lCC.loadedUps++;
                         break;
                     }
                 case LuauOpcode.LOP_CONCAT:
@@ -398,6 +429,27 @@ public class Luauni : MonoBehaviour
                         }
                         break;
                     }
+                case LuauOpcode.LOP_GETUPVAL:
+                    {
+                        uint idx = Luau.INSN_B(inst);
+                        Closure cl = cL[cEL];
+                        if(cl.loadedUps <= idx)
+                        {
+                            Logging.Error($"Cannot GETUPVAL because index is outside the range of loaded upvalues.", "Luauni:Step");
+                            ready = false;
+                            yield break;
+                        }
+                        object upvalue = cl.upvals[idx];
+                        if(upvalue.GetType() == typeof(UpvalREF))
+                        {
+                            UpvalREF refer = (UpvalREF)upvalue;
+                            pL[cEL].registers[Luau.INSN_A(inst)] = refer.src.registers[refer.register];
+                        } else
+                        {
+                            pL[cEL].registers[Luau.INSN_A(inst)] = upvalue;
+                        }
+                        break;
+                    }
                 case LuauOpcode.LOP_JUMP:
                 case LuauOpcode.LOP_JUMPBACK:
                     jumpSteps(Luau.INSN_D(inst));
@@ -530,7 +582,11 @@ public class Luauni : MonoBehaviour
                         break;
                     }
                 case LuauOpcode.LOP_NEWCLOSURE:
-                    pL[cEL].registers[Luau.INSN_A(inst)] = pL[cEL].p[Luau.INSN_D(inst)];
+                    lCC = new Closure() {
+                        p = pL[cEL].p[Luau.INSN_D(inst)],
+                        upvals = new object[pL[cEL].p[Luau.INSN_D(inst)].nups]
+                    };
+                    pL[cEL].registers[Luau.INSN_A(inst)] = lCC;
                     break;
                 case LuauOpcode.LOP_NEWTABLE:
                     pL[cEL].registers[Luau.INSN_A(inst)] = new object[nextInst()];
@@ -587,6 +643,7 @@ public class Luauni : MonoBehaviour
                         pL[cEL - 1] = edit;
                         pL.RemoveAt(cEL);
                         iP.RemoveAt(cEL);
+                        cL.RemoveAt(cEL);
                         cEL--;
                     }
                     break;
@@ -674,6 +731,28 @@ public class Luauni : MonoBehaviour
                             Logging.Error($"Cannot apply indexing on register type {t}", "Luauni:Step");
                             ready = false;
                             yield break;
+                        }
+                        break;
+                    }
+                case LuauOpcode.LOP_SETUPVAL:
+                    {
+                        uint idx = Luau.INSN_B(inst);
+                        Closure cl = cL[cEL];
+                        if (cl.loadedUps <= idx)
+                        {
+                            Logging.Error($"Cannot SETUPVAL because index is outside the range of loaded upvalues.", "Luauni:Step");
+                            ready = false;
+                            yield break;
+                        }
+                        object upvalue = cl.upvals[idx];
+                        if (upvalue.GetType() == typeof(UpvalREF))
+                        {
+                            UpvalREF refer = (UpvalREF)upvalue;
+                            refer.src.registers[refer.register] = pL[cEL].registers[Luau.INSN_A(inst)];
+                        }
+                        else
+                        {
+                            cl.upvals[idx] = pL[cEL].registers[Luau.INSN_A(inst)];
                         }
                         break;
                     }

@@ -72,7 +72,7 @@ public static class Globals
         }
         else
         {
-            Logging.Error($"Global name '{name}' is not registered.", "Globals:Get");
+            Logging.Warn($"Global name '{name}' is not registered.", "Globals:Get");
             return null;
         }
     }
