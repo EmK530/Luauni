@@ -56,12 +56,3 @@ If there is an ❌ then if it is encountered Luauni will stop execution.<br>
 ❌ `LOP_SUBRK` `LOP_DIVRK`<br>
 ❌ `LOP_JUMPXEQKNIL` `LOP_JUMPXEQKB` `LOP_JUMPXEQKN` `LOP_JUMPXEQKS`<br>
 ❌ `LOP_IDIV` `LOP_IDIVK`<br>
-
-## Implemented Globals
-<b>`math`</b> - 20.6% (7/34)<br>
-### Topmost Functions
-`print`<br>
-`warn`<br>
-`tostring`<br>
-`tonumber`<br>
-`pairs` ⚠️<br>
