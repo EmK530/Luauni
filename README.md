@@ -17,7 +17,8 @@ If there is an ❌ then if it is encountered Luauni will stop execution.<br>
 ✅ `LOP_LOADB` `LOP_LOADN` `LOP_LOADK`<br>
 ✅ `LOP_MOVE`<br>
 ✅ `LOP_GETGLOBAL` `LOP_SETGLOBAL`<br>
-❌ `LOP_GETUPVAL` `LOP_SETUPVAL` `LOP_CLOSEUPVALS`<br>
+✅ `LOP_GETUPVAL` `LOP_SETUPVAL`<br>
+⚠️ `LOP_CLOSEUPVALS`<br>
 ❌ `LOP_GETIMPORT`<br>
 ✅ `LOP_GETTABLE` `LOP_SETTABLE`<br>
 ✅ `LOP_GETTABLEKS`<br>
@@ -51,7 +52,7 @@ If there is an ❌ then if it is encountered Luauni will stop execution.<br>
 ❌ `LOP_JUMPX`<br>
 ❌ `LOP_FASTCALL` `LOP_FASTCALL1` `LOP_FASTCALL2` `LOP_FASTCALL2K`<br>
 ❌ `LOP_COVERAGE`<br>
-❌ `LOP_CAPTURE`<br>
+✅ `LOP_CAPTURE`<br>
 ❌ `LOP_SUBRK` `LOP_DIVRK`<br>
 ❌ `LOP_JUMPXEQKNIL` `LOP_JUMPXEQKB` `LOP_JUMPXEQKN` `LOP_JUMPXEQKS`<br>
 ❌ `LOP_IDIV` `LOP_IDIVK`<br>
