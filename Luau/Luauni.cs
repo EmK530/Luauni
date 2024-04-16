@@ -59,10 +59,10 @@ public class Luauni : MonoBehaviour
 
     void Update()
     {
-        tx.text = $"Luauni Debug\nProto {mainProtoId} Position: {iP[0]} / {protos[0].sizecode}\nRecent Error: {Logging.LastError}";
+        tx.text = $"Luauni Debug\nProto {mainProtoId} Position: {iP[0]+1} / {protos[mainProtoId].sizecode}\nRecent Error: {Logging.LastError}";
         if (!ready && !printed)
         {
-            Logging.Warn($"Proto {mainProtoId} emulated progress: {iP[0]} instructions / {protos[0].sizecode} instructions.");
+            Logging.Warn($"Proto {mainProtoId} emulated progress: {iP[0]+1} instructions / {protos[mainProtoId].sizecode} instructions.");
             printed = true;
         }
     }
