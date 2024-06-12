@@ -4,10 +4,13 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
+using System.Reflection;
 using System.Runtime.ConstrainedExecution;
 using System.Runtime.InteropServices;
 using Unity.VisualScripting;
 using UnityEngine;
+using static UnityEngine.GraphicsBuffer;
+using static UnityEngine.InputManagerEntry;
 
 public class Proto
 {
@@ -280,9 +283,11 @@ public static class ParseEssentials
         Logging.Debug($"Loading {p.sizek} constants for Proto {i}", "Luauni:Parse:PP");
         p.k = new object[p.sizek];
 
+        int tables = 0;
         for (int j = 0; j < p.sizek; ++j)
         {
             LuauBytecodeTag read = (LuauBytecodeTag)br.ReadByte();
+            Logging.Debug("j: " + j + " ("+read+")");
             switch (read)
             {
                 case LuauBytecodeTag.LBC_CONSTANT_NIL:
@@ -300,7 +305,7 @@ public static class ParseEssentials
                     break;
                 case LuauBytecodeTag.LBC_CONSTANT_STRING:
                     int id = br.ReadVariableLen();
-                    string? rd = id <= 0 ? null : tbl[id - 1];
+                    string? rd = id == 0 ? null : tbl[id - 1];
                     if (rd == null)
                         Logging.Warn("Invalid string constant ID: " + id, "Luauni:Parse:PP");
                     p.k[j] = rd;
@@ -308,10 +313,15 @@ public static class ParseEssentials
                 case LuauBytecodeTag.LBC_CONSTANT_TABLE:
                     Dictionary<string, object> kt = new Dictionary<string, object>(); // key table
                     int keys = br.ReadVariableLen();
-                    for (int k = 0; k < keys; k++)
+                    Logging.Warn(keys);
+                    for (int k = 0; k < keys; ++k)
                     {
-                        kt.Add(tbl[br.ReadVariableLen()],null);
+                        int temp = br.ReadVariableLen();
+                        Logging.Debug(temp);
+                        Logging.Debug(tbl[temp - tables]);
+                        kt.Add(tbl[temp - tables],null); // hacky solution because there was a bug
                     }
+                    tables++;
                     p.k[j] = kt;
                     break;
                 case LuauBytecodeTag.LBC_CONSTANT_IMPORT:
@@ -333,5 +343,81 @@ public static class ParseEssentials
         p.sizep = br.ReadVariableLen();
         p.p = new Proto[p.sizep];
         return p;
+    }
+}
+
+public static class Misc
+{
+    public static object TryGetType(Transform v2)
+    {
+        Type type = GetTypeByName(v2.tag);
+        if (type != null)
+        {
+            var component = v2.gameObject.GetComponent(type);
+            if (component != null)
+            {
+                Logging.Warn("Returning component!!!");
+                return component;
+            }
+        }
+        Logging.Warn($"Returned GameObject with no known class: {v2.name}", "Luauni:Misc:TGRV");
+        return v2.gameObject;
+    }
+    public static (bool,Component) TryGetTypeStrict(Transform v2)
+    {
+        Type type = GetTypeByName(v2.tag);
+        if (type != null)
+        {
+            var component = v2.gameObject.GetComponent(type);
+            if (component != null)
+            {
+                return (true, component);
+            } else
+            {
+                return (false, null);
+            }
+        }
+        else
+        {
+            return (false,null);
+        }
+    }
+    public static Type GetTypeByName(string name)
+    {
+        return Type.GetType(name);
+    }
+    public static Type SafeType(object input)
+    {
+        if (input is Type)
+        {
+            Logging.Debug("Safe type");
+            return (Type)input;
+        }
+        else
+        {
+            return input.GetType();
+        }
+    }
+    public static GameObject SafeGameObjectFromClass(object input)
+    {
+        Type t = SafeType(input);
+        if (t == typeof(GameObject))
+        {
+            return (GameObject)input;
+        }
+        else if (t == typeof(Component))
+        {
+            return ((Component)input).gameObject;
+        }
+        else
+        {
+            Type cast = (Type)t;
+            FieldInfo src = cast.GetField("source");
+            if(src != null)
+            {
+                return (GameObject)(cast.GetField("source").GetValue(cast));
+            }
+        }
+        return null;
     }
 }

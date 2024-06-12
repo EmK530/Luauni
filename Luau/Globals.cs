@@ -22,12 +22,16 @@ public static class Globals
         Logging.Debug($"IsInitialized = {initialized}", "Globals:IsInitialized");
         return initialized;
     }
+
     public static void Init()
     {
         Logging.Debug($"Initializing...", "Globals:Init");
         IterateClass(typeof(GC), list, "", true);
+        list["game"] = DataModel.instance.GetType();
+        list["workspace"] = Workspace.instance.GetType();
         initialized = true;
     }
+
     public static void IterateClass(Type i, Dictionary<string, object> contain, string path, bool top)
     {
         foreach (Type t in i.GetNestedTypes())
@@ -154,7 +158,6 @@ public static class GC
         }
         yield break;
     }
-    public static Instance game;
     public static Dictionary<string, object> _G = new Dictionary<string, object>();
     public static class math
     {
