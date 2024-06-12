@@ -1,11 +1,11 @@
 # Luauni - Unity Branch
 This is the branch of Luauni where development goes on in Unity.<br>
-The current goal is trying to emulate Robot 64.
+The current goal is trying to emulate Robot 64 Engine.
 
 ## Emulation Progress
-In here progress will be shown on emulating Robot 64, how far it has gone in the main function and what errored.<br>
-`Reached instruction 124 / 18657`<br>
-`Error: InputBegan is not a valid member of UserInputService`
+In here progress will be shown on emulating Robot 64 Engine, how far it has gone in the main function and what errored.<br>
+`Reached instruction 80 / 12464`<br>
+`Error: 'UserInputService' is not a valid Service name`
 
 ## Opcode Support
 This is a list of all the opcodes Luauni currently supports.<br>
