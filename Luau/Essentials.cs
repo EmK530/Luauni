@@ -390,7 +390,6 @@ public static class Misc
     {
         if (input is Type)
         {
-            Logging.Debug("Safe type");
             return (Type)input;
         }
         else

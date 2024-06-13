@@ -20,6 +20,12 @@ public static class InheritedByAll
         }
         yield break;
     }
+    public static IEnumerator Destroy(CallData dat)
+    {
+        GameObject.DestroyImmediate(Misc.SafeGameObjectFromClass(dat.initiator.recentNameCalledRegister));
+        Luau.returnToProto(ref dat, new object[0]);
+        yield break;
+    }
     public static IEnumerator WaitForChild(CallData dat)
     {
         object[] inp = Luau.getAllArgs(ref dat);

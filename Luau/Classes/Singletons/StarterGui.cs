@@ -4,10 +4,11 @@ using UnityEngine;
 
 public class StarterGui : MonoBehaviour
 {
-    public static IEnumerator SetCoreGuiEnabled(CallData dat) { yield break; } // we do not have coregui
+    public static IEnumerator SetCoreGuiEnabled(CallData dat) { Luau.returnToProto(ref dat, new object[0]); yield break; } // we do not have coregui
 
     public static StarterGui instance;
     public static bool isObject = true;
+    public static bool isStatic = true;
 
     void Start()
     {

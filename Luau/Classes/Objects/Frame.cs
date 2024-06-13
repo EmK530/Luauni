@@ -15,6 +15,7 @@ public class Frame : MonoBehaviour
     }
 
     public static bool isObject = true;
+    public static bool isStatic = false;
 
     void Start()
     {

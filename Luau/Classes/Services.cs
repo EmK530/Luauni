@@ -8,7 +8,7 @@ public static class Services
     {
         ["Players"] = Players.instance,
         ["ReplicatedFirst"] = ReplicatedFirst.instance,
-        ["UserInputService"] = ReplicatedFirst.instance,
+        ["UserInputService"] = UserInputService.instance,
         ["GuiService"] = GuiService.instance
     };
 }

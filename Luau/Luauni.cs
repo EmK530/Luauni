@@ -207,7 +207,7 @@ public class Luauni : MonoBehaviour
                         Type regType = regcopy.GetType();
                         if (regType == typeof(Globals.Standard))
                         {
-                            Logging.Debug("Calling a global function.", "Luauni:Step");
+                            Logging.Debug("Calling a standard function.", "Luauni:Step");
                             Globals.Standard target = (Globals.Standard)regcopy;
                             Proto sendProto = pL[cEL];
                             CallData send = new CallData()
@@ -217,7 +217,7 @@ public class Luauni : MonoBehaviour
                                 args = args,
                                 returns = returns
                             };
-                            yield return target(send);
+                            yield return target.Invoke(send);
                             if (sendProto.globalErrored)
                             {
                                 ready = false;
@@ -394,12 +394,12 @@ public class Luauni : MonoBehaviour
                         string key = (string)pL[cEL].k[nextInst()];
                         Logging.Debug($"GETTABLEKS key: {key}", "Luauni:Step");
                         object target = pL[cEL].registers[Luau.INSN_B(inst)];
+                        Logging.Debug(target);
                         if(target==null)
                         {
                             Logging.Error($"Attempt to index nil with {key}", "Luauni:Step"); ready = false; yield break;
                         }
                         Type t = Misc.SafeType(target);
-                        Logging.Debug(t);
                         if(t == typeof(NamedDict))
                         {
                             NamedDict nd = (NamedDict)target;
@@ -424,7 +424,6 @@ public class Luauni : MonoBehaviour
                         }
                         else if(t == typeof(GameObject))
                         {
-                            Logging.Warn("searching GameObject");
                             GameObject obj = (GameObject)target;
                             Transform find = obj.transform.Find(key);
                             if (find != null)
@@ -438,13 +437,10 @@ public class Luauni : MonoBehaviour
                         }
                         else 
                         {
-                            Logging.Warn("searching misc");
                             FieldInfo test = t.GetField(key, search);
                             if (test != null)
                             {
-                                Logging.Warn("yay");
                                 object send = test.GetValue(target);
-                                Logging.Warn(send);
                                 pL[cEL].registers[Luau.INSN_A(inst)] = send;
                             }
                             else
@@ -453,7 +449,6 @@ public class Luauni : MonoBehaviour
                                 if (temp == null) { temp = t.GetNestedType(key, search); }
                                 if (temp == null)
                                 {
-                                    Logging.Warn("gotta index");
                                     FieldInfo isObject = t.GetField("isObject");
                                     if (isObject == null)
                                     {
@@ -621,19 +616,21 @@ public class Luauni : MonoBehaviour
                     {
                         string key = (string)pL[cEL].k[nextInst()];
                         object reg = pL[cEL].registers[Luau.INSN_B(inst)];
-                        MethodInfo get2 = Misc.SafeType(reg).GetMethod(key);
-                        Logging.Warn($"Namecalling {key} in {reg}");
+                        Logging.Debug(reg);
+                        Type t = Misc.SafeType(reg);
+                        FieldInfo stat = t.GetField("isStatic");
+                        bool isStatic = stat != null && ((bool)stat.GetValue(reg));
+                        MethodInfo get2 = t.GetMethod(key);
                         if (get2 != null)
                         {
                             pL[cEL].recentNameCalledRegister = pL[cEL].registers[Luau.INSN_B(inst)];
-                            pL[cEL].registers[Luau.INSN_A(inst)] = (Globals.Standard)Delegate.CreateDelegate(typeof(Globals.Standard), null, get2); ;
+                            pL[cEL].registers[Luau.INSN_A(inst)] = (Globals.Standard)Delegate.CreateDelegate(typeof(Globals.Standard), isStatic ? null : reg, get2); ;
                         }
                         else
                         {
                             MethodInfo get = Type.GetType("InheritedByAll").GetMethod(key);
                             if (get != null)
                             {
-                                Logging.Warn($"Returning {key} from InheritedByAll");
                                 pL[cEL].recentNameCalledRegister = pL[cEL].registers[Luau.INSN_B(inst)];
                                 pL[cEL].registers[Luau.INSN_A(inst)] = (Globals.Standard)Delegate.CreateDelegate(typeof(Globals.Standard), null, get); ;
                             }

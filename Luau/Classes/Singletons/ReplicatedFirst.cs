@@ -4,19 +4,9 @@ using UnityEngine;
 
 public class ReplicatedFirst : MonoBehaviour
 {
-    private static bool _mouseIconEnabled = false;
-    public static bool MouseIconEnabled
-    {
-        get { return _mouseIconEnabled; }
-        set
-        {
-            _mouseIconEnabled = value;
-            Cursor.visible = value;
-        }
-    }
-
     public static ReplicatedFirst instance;
     public static bool isObject = true;
+    public static bool isStatic = true;
     public static GameObject source;
     void Start()
     {
