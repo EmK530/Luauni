@@ -5,7 +5,7 @@ The current goal is trying to emulate Robot 64 Engine.
 ## Emulation Progress
 In here progress will be shown on emulating Robot 64 Engine, how far it has gone in the main function and what errored.<br>
 `Reached instruction 155 / 12464`<br>
-`Error: InputBegan is not a valid member of GameObject`
+`Error: InputBegan is not a valid member of GameObject`<br>
 Context: Error caused by: `UI.mobile.A.InputBegan`, we do not have an ImageButton class yet.
 
 ## Opcode Support
