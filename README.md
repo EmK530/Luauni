@@ -4,8 +4,8 @@ The current goal is trying to emulate Robot 64 Engine.
 
 ## Emulation Progress
 In here progress will be shown on emulating Robot 64 Engine, how far it has gone in the main function and what errored.<br>
-`Reached instruction 80 / 12464`<br>
-`Error: 'UserInputService' is not a valid Service name`
+`Reached instruction 124 / 12464`<br>
+`Error: InputBegan is not a valid member of ReplicatedFirst`
 
 ## Opcode Support
 This is a list of all the opcodes Luauni currently supports.<br>
