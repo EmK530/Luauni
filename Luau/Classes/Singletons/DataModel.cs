@@ -20,17 +20,11 @@ public class DataModel : MonoBehaviour
     {
         object[] inp = Luau.getAllArgs(ref dat);
         string key = (string)inp[1];
-        Transform find = source.transform.Find(key);
-        if (find == null)
+        if (!Services.List.ContainsKey(key))
         {
             dat.initiator.globalErrored = true; Logging.Error($"'{key}' is not a valid Service name", "DataModel:GetService"); yield break;
         }
-        (bool, Component) check = Misc.TryGetTypeStrict(find);
-        if (!check.Item1)
-        {
-            dat.initiator.globalErrored = true; Logging.Error($"'{key}' is not a valid Service name", "DataModel:GetService"); yield break;
-        }
-        Luau.returnToProto(ref dat, new object[1] { check.Item2 });
+        Luau.returnToProto(ref dat, new object[1] { Services.List[key].GetType() });
         yield break;
     }
 
