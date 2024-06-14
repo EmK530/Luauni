@@ -438,10 +438,17 @@ public class Luauni : MonoBehaviour
                         else 
                         {
                             FieldInfo test = t.GetField(key, search);
-                            if (test != null)
+                            Type test2 = t.GetNestedType(key, search);
+                            if (test != null || test2 != null)
                             {
-                                object send = test.GetValue(target);
-                                pL[cEL].registers[Luau.INSN_A(inst)] = send;
+                                if (test != null)
+                                {
+                                    object send = test.GetValue(target);
+                                    pL[cEL].registers[Luau.INSN_A(inst)] = send;
+                                } else
+                                {
+                                    pL[cEL].registers[Luau.INSN_A(inst)] = test2;
+                                }
                             }
                             else
                             {
@@ -457,7 +464,7 @@ public class Luauni : MonoBehaviour
                                     bool indexable = (bool)isObject.GetValue(t);
                                     if (indexable)
                                     {
-                                        GameObject obj = (GameObject)(t.GetField("source").GetValue(t));
+                                        GameObject obj = (GameObject)(t.GetField("source",search).GetValue(target));
                                         Transform find = obj.transform.Find(key);
                                         if (find != null)
                                         {

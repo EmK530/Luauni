@@ -410,11 +410,11 @@ public static class Misc
         }
         else
         {
-            Type cast = (Type)t;
-            FieldInfo src = cast.GetField("source");
+            BindingFlags search = BindingFlags.Instance | BindingFlags.Static | BindingFlags.Public;
+            FieldInfo src = t.GetField("source", search);
             if(src != null)
             {
-                return (GameObject)(cast.GetField("source").GetValue(cast));
+                return (GameObject)(t.GetField("source").GetValue(input));
             }
         }
         return null;

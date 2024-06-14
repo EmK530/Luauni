@@ -18,6 +18,9 @@ public class UserInputService : MonoBehaviour
     public static RBXScriptSignal InputBegan = new RBXScriptSignal();
     public static RBXScriptSignal InputEnded = new RBXScriptSignal();
     public static RBXScriptSignal InputChanged = new RBXScriptSignal();
+    public static RBXScriptSignal TouchStarted = new RBXScriptSignal();
+    public static RBXScriptSignal TextBoxFocused = new RBXScriptSignal();
+    public static RBXScriptSignal TextBoxFocusReleased = new RBXScriptSignal();
 
     public static UserInputService instance;
     public static bool isObject = false;

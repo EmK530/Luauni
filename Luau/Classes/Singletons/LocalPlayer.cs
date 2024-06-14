@@ -9,6 +9,8 @@ public class LocalPlayer : MonoBehaviour
         yield break;
     }
 
+    public RBXScriptSignal Chatted = new RBXScriptSignal(); // we have no chat
+
     public static LocalPlayer instance;
     public static bool isObject = true;
     public static bool isStatic = true;

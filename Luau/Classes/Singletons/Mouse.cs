@@ -5,6 +5,16 @@ using UnityEngine;
 public class Mouse : MonoBehaviour
 {
     public static Mouse instance;
+
+    public static RBXScriptSignal Button1Down = new RBXScriptSignal();
+    public static RBXScriptSignal Button1Up = new RBXScriptSignal();
+    public static RBXScriptSignal Button2Down = new RBXScriptSignal();
+    public static RBXScriptSignal Button2Up = new RBXScriptSignal();
+    public static RBXScriptSignal Idle = new RBXScriptSignal();
+    public static RBXScriptSignal Move = new RBXScriptSignal();
+    public static RBXScriptSignal WheelBackward = new RBXScriptSignal();
+    public static RBXScriptSignal WheelForward = new RBXScriptSignal();
+
     public static bool isObject = false;
     public static bool isStatic = true;
     public static GameObject source;

@@ -1,8 +1,9 @@
 using System.Collections;
 using UnityEngine;
 
-public class Frame : MonoBehaviour
+public class TextButton : MonoBehaviour
 {
+    public RBXScriptSignal MouseButton1Click = new RBXScriptSignal();
     [SerializeField]
     private bool _visible = true;
     public bool Visible

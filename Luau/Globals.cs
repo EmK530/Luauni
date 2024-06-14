@@ -29,6 +29,7 @@ public static class Globals
         IterateClass(typeof(GC), list, "", true);
         list["game"] = DataModel.instance.GetType();
         list["workspace"] = Workspace.instance.GetType();
+        list["Enum"] = typeof(Enum);
         initialized = true;
     }
 
