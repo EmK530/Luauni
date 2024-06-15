@@ -6,7 +6,6 @@ public class ReplicatedFirst : MonoBehaviour
 {
     public static ReplicatedFirst instance;
     public static bool isObject = true;
-    public static bool isStatic = true;
     public static GameObject source;
     void Start()
     {

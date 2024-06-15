@@ -21,5 +21,4 @@ public class RBXScriptSignal
     }
 
     public static bool isObject = false;
-    public static bool isStatic = false;
 }

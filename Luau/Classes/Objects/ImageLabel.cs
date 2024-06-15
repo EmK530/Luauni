@@ -1,12 +1,10 @@
 using System.Collections;
 using UnityEngine;
 
-public class ImageButton : MonoBehaviour
+public class ImageLabel : MonoBehaviour
 {
-    public readonly string ClassName = "ImageButton";
+    public readonly string ClassName = "ImageLabel";
 
-    public RBXScriptSignal InputBegan = new RBXScriptSignal();
-    public RBXScriptSignal MouseButton1Down = new RBXScriptSignal();
     [SerializeField]
     private bool _visible = true;
     public bool Visible

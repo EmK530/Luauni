@@ -16,7 +16,6 @@ public class Mouse : MonoBehaviour
     public static RBXScriptSignal WheelForward = new RBXScriptSignal();
 
     public static bool isObject = false;
-    public static bool isStatic = true;
     public static GameObject source;
     void Start()
     {

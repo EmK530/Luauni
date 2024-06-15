@@ -3,7 +3,18 @@ using UnityEngine;
 
 public class TextButton : MonoBehaviour
 {
+    public readonly string ClassName = "TextButton";
+    public string Name
+    {
+        get { return transform.name; }
+        set { transform.name = value; }
+    }
+    
     public RBXScriptSignal MouseButton1Click = new RBXScriptSignal();
+    public RBXScriptSignal InputBegan = new RBXScriptSignal();
+    public RBXScriptSignal InputEnded = new RBXScriptSignal();
+    public RBXScriptSignal InputChanged = new RBXScriptSignal();
+
     [SerializeField]
     private bool _visible = true;
     public bool Visible
@@ -17,13 +28,9 @@ public class TextButton : MonoBehaviour
     }
 
     public static bool isObject = true;
-    public static bool isStatic = false;
-    [HideInInspector]
-    public GameObject source;
 
     void Start()
     {
-        source = gameObject;
         gameObject.SetActive(_visible);
     }
 }

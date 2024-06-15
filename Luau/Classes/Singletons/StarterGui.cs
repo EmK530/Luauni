@@ -8,7 +8,6 @@ public class StarterGui : MonoBehaviour
 
     public static StarterGui instance;
     public static bool isObject = true;
-    public static bool isStatic = true;
 
     void Start()
     {

@@ -26,6 +26,27 @@ public static class InheritedByAll
         Luau.returnToProto(ref dat, new object[0]);
         yield break;
     }
+    private static List<object> DescendantsCache = new List<object>();
+    private static void IterRecursive(Transform search)
+    {
+        DescendantsCache.Add(Misc.TryGetType(search));
+        foreach (Transform child in search)
+        {
+            IterRecursive(child);
+        }
+    }
+    public static IEnumerator GetDescendants(CallData dat)
+    {
+        GameObject tosearch = Misc.SafeGameObjectFromClass(dat.initiator.recentNameCalledRegister);
+        foreach(Transform child in tosearch.transform)
+        {
+            IterRecursive(child);
+        }
+        object[] sendback = DescendantsCache.ToArray();
+        DescendantsCache.Clear();
+        Luau.returnToProto(ref dat, new object[1] { sendback });
+        yield break;
+    }
     public static IEnumerator WaitForChild(CallData dat)
     {
         object[] inp = Luau.getAllArgs(ref dat);

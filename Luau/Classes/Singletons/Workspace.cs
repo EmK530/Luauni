@@ -18,7 +18,6 @@ public class Workspace : MonoBehaviour
 
     public static Workspace instance;
     public static bool isObject = true;
-    public static bool isStatic = true;
     public static GameObject source;
     void Start()
     {

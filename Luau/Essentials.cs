@@ -9,8 +9,6 @@ using System.Runtime.ConstrainedExecution;
 using System.Runtime.InteropServices;
 using Unity.VisualScripting;
 using UnityEngine;
-using static UnityEngine.GraphicsBuffer;
-using static UnityEngine.InputManagerEntry;
 
 public class Proto
 {
@@ -313,7 +311,6 @@ public static class ParseEssentials
                 case LuauBytecodeTag.LBC_CONSTANT_TABLE:
                     Dictionary<string, object> kt = new Dictionary<string, object>(); // key table
                     int keys = br.ReadVariableLen();
-                    Logging.Warn(keys);
                     for (int k = 0; k < keys; ++k)
                     {
                         int temp = br.ReadVariableLen();
@@ -356,11 +353,10 @@ public static class Misc
             var component = v2.gameObject.GetComponent(type);
             if (component != null)
             {
-                Logging.Warn("Returning component!!!");
                 return component;
             }
         }
-        Logging.Warn($"Returned GameObject with no known class: {v2.name}", "Luauni:Misc:TGRV");
+        Logging.Warn($"Returned GameObject with no known class: {v2.name}", "Luauni:Misc:TGT");
         return v2.gameObject;
     }
     public static (bool,Component) TryGetTypeStrict(Transform v2)
@@ -404,10 +400,6 @@ public static class Misc
         {
             return (GameObject)input;
         }
-        else if (t == typeof(Component))
-        {
-            return ((Component)input).gameObject;
-        }
         else
         {
             BindingFlags search = BindingFlags.Instance | BindingFlags.Static | BindingFlags.Public;
@@ -415,8 +407,10 @@ public static class Misc
             if(src != null)
             {
                 return (GameObject)(t.GetField("source").GetValue(input));
+            } else
+            {
+                return ((Component)input).gameObject;
             }
         }
-        return null;
     }
 }

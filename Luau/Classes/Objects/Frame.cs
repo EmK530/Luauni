@@ -3,6 +3,8 @@ using UnityEngine;
 
 public class Frame : MonoBehaviour
 {
+    public readonly string ClassName = "Frame";
+
     [SerializeField]
     private bool _visible = true;
     public bool Visible
@@ -16,13 +18,9 @@ public class Frame : MonoBehaviour
     }
 
     public static bool isObject = true;
-    public static bool isStatic = false;
-    [HideInInspector]
-    public GameObject source;
 
     void Start()
     {
-        source = gameObject;
         gameObject.SetActive(_visible);
     }
 }

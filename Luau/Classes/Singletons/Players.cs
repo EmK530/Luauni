@@ -8,7 +8,6 @@ public class Players : MonoBehaviour
 
     public static Players instance;
     public static bool isObject = true;
-    public static bool isStatic = true;
     public static GameObject source;
     void Start()
     {

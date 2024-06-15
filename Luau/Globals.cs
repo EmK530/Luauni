@@ -30,6 +30,7 @@ public static class Globals
         list["game"] = DataModel.instance.GetType();
         list["workspace"] = Workspace.instance.GetType();
         list["Enum"] = typeof(Enum);
+        list["Vector3"] = typeof(Vector3);
         initialized = true;
     }
 

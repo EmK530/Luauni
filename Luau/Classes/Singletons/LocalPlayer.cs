@@ -13,7 +13,6 @@ public class LocalPlayer : MonoBehaviour
 
     public static LocalPlayer instance;
     public static bool isObject = true;
-    public static bool isStatic = true;
     public static GameObject source;
     void Start()
     {

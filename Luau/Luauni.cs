@@ -7,6 +7,8 @@ using System.Reflection;
 using UnityEngine.UI;
 using UnityEngine;
 using TMPro;
+using System.Diagnostics.Eventing.Reader;
+using static UnityEngine.GraphicsBuffer;
 
 public class Luauni : MonoBehaviour
 {
@@ -367,24 +369,49 @@ public class Luauni : MonoBehaviour
                 case LuauOpcode.LOP_GETTABLE:
                     {
                         object rg = pL[cEL].registers[Luau.INSN_B(inst)];
-                        if (rg.GetType() == typeof(object[]))
+                        Type t = rg.GetType();
+                        if (t == typeof(object[]))
                         {
                             object[] arr = (object[])rg;
                             int index = Convert.ToInt32((double)pL[cEL].registers[Luau.INSN_C(inst)]) - 1;
                             pL[cEL].registers[Luau.INSN_A(inst)] = index < arr.Length && index >= 0 ? arr[index] : null;
-                        } else if (rg.GetType() == typeof(Dictionary<string, object>))
+                        }
+                        else if (t == typeof(Dictionary<string, object>))
                         {
                             Dictionary<string, object> arr = (Dictionary<string, object>)rg;
                             object idx = pL[cEL].registers[Luau.INSN_C(inst)];
                             if (idx.GetType() == typeof(string))
                             {
                                 pL[cEL].registers[Luau.INSN_A(inst)] = arr[(string)pL[cEL].registers[Luau.INSN_C(inst)]];
-                            } else
+                            }
+                            else
                             {
                                 Logging.Error($"Attempt to index table with {idx.GetType()}", "Luauni:Step"); ready = false; yield break;
                             }
-                        } else
+                        }
+                        else if (t == typeof(NamedDict))
                         {
+                            NamedDict nd = (NamedDict)rg;
+                            string key = (string)pL[cEL].registers[Luau.INSN_C(inst)];
+                            Dictionary<string, object> dict = nd.dict;
+                            if (dict.TryGetValue(key, out object val))
+                            {
+                                if (val.GetType() == typeof(Dictionary<string, object>))
+                                {
+                                    val = new NamedDict()
+                                    {
+                                        name = key,
+                                        dict = (Dictionary<string, object>)val
+                                    };
+                                }
+                                pL[cEL].registers[Luau.INSN_A(inst)] = val;
+                                Logging.Debug($"Found key: {val}", "Luauni:Step");
+                            }
+                            else
+                            {
+                                Logging.Error($"{key} is not a valid member of {nd.name}", "Luauni:Step"); ready = false; yield break;
+                            }
+                        } else {
                             Logging.Error($"Cannot perform indexing on a {rg.GetType()}", "Luauni:Step"); ready = false; yield break;
                         }
                         break;
@@ -439,16 +466,22 @@ public class Luauni : MonoBehaviour
                         {
                             FieldInfo test = t.GetField(key, search);
                             Type test2 = t.GetNestedType(key, search);
-                            if (test != null || test2 != null)
+                            MethodInfo test3 = t.GetMethod(key);
+                            PropertyInfo test4 = t.GetProperty(key, search);
+                            if (test != null)
                             {
-                                if (test != null)
-                                {
-                                    object send = test.GetValue(target);
-                                    pL[cEL].registers[Luau.INSN_A(inst)] = send;
-                                } else
-                                {
-                                    pL[cEL].registers[Luau.INSN_A(inst)] = test2;
-                                }
+                                object send = test.GetValue(target);
+                                pL[cEL].registers[Luau.INSN_A(inst)] = send;
+                            } else if(test2 != null)
+                            {
+                                pL[cEL].registers[Luau.INSN_A(inst)] = test2;
+                            } else if(test3 != null)
+                            {
+                                pL[cEL].registers[Luau.INSN_A(inst)] = (Globals.Standard)Delegate.CreateDelegate(typeof(Globals.Standard), test3.IsStatic ? null : target, test3);
+                            } else if(test4 != null)
+                            {
+                                object send = test4.GetValue(target);
+                                pL[cEL].registers[Luau.INSN_A(inst)] = send;
                             }
                             else
                             {
@@ -464,7 +497,15 @@ public class Luauni : MonoBehaviour
                                     bool indexable = (bool)isObject.GetValue(t);
                                     if (indexable)
                                     {
-                                        GameObject obj = (GameObject)(t.GetField("source",search).GetValue(target));
+                                        FieldInfo f1 = t.GetField("source", search);
+                                        GameObject obj;
+                                        if(f1 != null)
+                                        {
+                                            obj = (GameObject)(f1.GetValue(target));
+                                        } else
+                                        {
+                                            obj = ((Component)target).gameObject;
+                                        }
                                         Transform find = obj.transform.Find(key);
                                         if (find != null)
                                         {
@@ -625,13 +666,11 @@ public class Luauni : MonoBehaviour
                         object reg = pL[cEL].registers[Luau.INSN_B(inst)];
                         Logging.Debug(reg);
                         Type t = Misc.SafeType(reg);
-                        FieldInfo stat = t.GetField("isStatic");
-                        bool isStatic = stat != null && ((bool)stat.GetValue(reg));
                         MethodInfo get2 = t.GetMethod(key);
                         if (get2 != null)
                         {
                             pL[cEL].recentNameCalledRegister = pL[cEL].registers[Luau.INSN_B(inst)];
-                            pL[cEL].registers[Luau.INSN_A(inst)] = (Globals.Standard)Delegate.CreateDelegate(typeof(Globals.Standard), isStatic ? null : reg, get2); ;
+                            pL[cEL].registers[Luau.INSN_A(inst)] = (Globals.Standard)Delegate.CreateDelegate(typeof(Globals.Standard), get2.IsStatic ? null : reg, get2); ;
                         }
                         else
                         {
@@ -639,7 +678,7 @@ public class Luauni : MonoBehaviour
                             if (get != null)
                             {
                                 pL[cEL].recentNameCalledRegister = pL[cEL].registers[Luau.INSN_B(inst)];
-                                pL[cEL].registers[Luau.INSN_A(inst)] = (Globals.Standard)Delegate.CreateDelegate(typeof(Globals.Standard), null, get); ;
+                                pL[cEL].registers[Luau.INSN_A(inst)] = (Globals.Standard)Delegate.CreateDelegate(typeof(Globals.Standard), get.IsStatic ? null : reg, get); ;
                             }
                             else
                             {

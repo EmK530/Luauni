@@ -24,7 +24,6 @@ public class UserInputService : MonoBehaviour
 
     public static UserInputService instance;
     public static bool isObject = false;
-    public static bool isStatic = true;
 
     void Start()
     {
