@@ -4,9 +4,9 @@ The current goal is trying to emulate Robot 64 Engine.
 
 ## Emulation Progress
 In here progress will be shown on emulating Robot 64 Engine, how far it has gone in the main function and what errored.<br>
-`Reached instruction 474 / 12464`<br>
-`Error: Touched is not a valid member of Part`<br>
-Context: Touched signal does not exist in the Part class.
+`Reached instruction 751 / 12464`<br>
+`Error: save is not a valid member of GameObject`<br>
+Context: This tries to access workspace.share.save, share has no class and save does not exist.
 
 ## Opcode Support
 This is a list of all the opcodes Luauni currently supports.<br>
