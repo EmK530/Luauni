@@ -2,12 +2,7 @@
 
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
-using System.Linq;
 using System.Reflection;
-using System.Runtime.ConstrainedExecution;
-using System.Runtime.InteropServices;
-using Unity.VisualScripting;
 using UnityEngine;
 
 public class Proto
@@ -33,11 +28,47 @@ public class Proto
     public bool globalErrored = false;
 }
 
+public enum YieldType
+{
+    Any = 0,
+    Hybrid = 1
+}
+
+public class SClosure
+{
+    public Closure source;
+    public int cEL = 0;
+    public List<int> iP = new List<int>();
+    public List<Proto> pL = new List<Proto>();
+    public List<Closure?> cL = new List<Closure?>();
+    public object[] args;
+    public bool initiated = false;
+    public bool complete = false;
+
+    public bool yielded = false;
+    public YieldType type;
+    public double resumeAt = Time.realtimeSinceStartupAsDouble;
+
+    public uint nextInst()
+    {
+        iP[cEL]++;
+        return pL[cEL].code[iP[cEL]];
+    }
+
+    public void jumpSteps(int steps)
+    {
+        iP[cEL] += steps;
+    }
+}
+
 public class Closure
 {
     public Proto p;
     public object[] upvals;
     public int loadedUps = 0;
+
+    //custom
+    public Luauni owner;
 }
 
 public class UpvalREF
@@ -55,6 +86,7 @@ public class NamedDict
 public class CallData
 {
     public Proto initiator;
+    public SClosure closure;
     public uint funcRegister;
     public int args;
     public int returns;
@@ -345,6 +377,18 @@ public static class ParseEssentials
 
 public static class Misc
 {
+    public static void SummonClosure(Closure cl, object[] args)
+    {
+        SClosure create = new SClosure()
+        {
+            source = cl,
+            args = args
+        };
+        create.iP.Add(-1);
+        create.pL.Add(cl.p);
+        create.cL.Add(null);
+        cl.owner.delayed.Add(create);
+    }
     public static object TryGetType(Transform v2)
     {
         Type type = GetTypeByName(v2.tag);

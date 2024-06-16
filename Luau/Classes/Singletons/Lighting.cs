@@ -1,23 +1,11 @@
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
-public class Workspace : MonoBehaviour
+public class Lighting : MonoBehaviour
 {
-    private static double _gravity = 196.2;
-    public static double Gravity
-    {
-        get { return _gravity; }
-        set
-        {
-            _gravity = value;
-            Physics.gravity = new Vector3(0, (float)value, 0);
-        }
-    }
-    public static Camera CurrentCamera;
-
-
-    public static Workspace instance;
+    public static Lighting instance;
     public static bool isObject = true;
     public static GameObject source;
     void Start()
@@ -26,7 +14,6 @@ public class Workspace : MonoBehaviour
         {
             instance = this;
             source = gameObject;
-            CurrentCamera = transform.Find("Camera").GetComponent<Camera>();
         }
         else
         {

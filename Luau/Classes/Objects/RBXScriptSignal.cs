@@ -15,6 +15,17 @@ public class RBXScriptSignal
         yield break;
     }
 
+    public void _fire(object[] args)
+    {
+        foreach(RBXScriptConnection con in listeners)
+        {
+            if(con.Connected)
+            {
+                Misc.SummonClosure(con.Connection, args);
+            }
+        }
+    }
+
     public RBXScriptSignal()
     {
         listeners = new List<RBXScriptConnection>();

@@ -10,6 +10,7 @@ using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Reflection;
+using UnityEngine;
 
 public static class Globals
 {
@@ -27,6 +28,7 @@ public static class Globals
     {
         Logging.Debug($"Initializing...", "Globals:Init");
         IterateClass(typeof(GC), list, "", true);
+        ESS.np.gameObject.SetActive(false);
         list["game"] = DataModel.instance.GetType();
         list["workspace"] = Workspace.instance.GetType();
         list["Enum"] = typeof(Enum);
@@ -64,7 +66,7 @@ public static class Globals
         Logging.Debug($"Get global '{name}'", "Globals:Get");
         if (list.TryGetValue(name, out var value))
         {
-            if (value.GetType() == typeof(Dictionary<string, object>))
+            if (value != null && value.GetType() == typeof(Dictionary<string, object>))
             {
                 return new NamedDict()
                 {
@@ -90,6 +92,32 @@ public static class Globals
 
 public static class GC
 {
+    public static System.Collections.IEnumerator wait(CallData dat)
+    {
+        object[] inp = Luau.getAllArgs(ref dat);
+        double delay = inp.Length != 0 ? (double)inp[0] : 0d;
+        dat.closure.yielded = true;
+        dat.closure.type = YieldType.Hybrid;
+        dat.closure.resumeAt = Time.realtimeSinceStartupAsDouble + delay;
+        yield break;
+    }
+    public static System.Collections.IEnumerator spawn(CallData dat)
+    {
+        object[] inp = Luau.getAllArgs(ref dat);
+        if (inp[0] is Closure cl)
+        {
+            object[] misc = new object[inp.Length - 1];
+            for(int i = 0; i < misc.Length; i++)
+            {
+                misc[i] = inp[i + 1];
+            }
+            Misc.SummonClosure(cl, misc);
+        } else
+        {
+            Logging.Error($"Internal error: Cannot spawn type {inp[0]}", "Luauni:Globals:spawn"); dat.initiator.globalErrored = true; yield break;
+        }
+        yield break;
+    }
     public static System.Collections.IEnumerator print(CallData dat)
     {
         string output = "";
