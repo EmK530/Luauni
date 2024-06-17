@@ -4,9 +4,9 @@ The current goal is trying to emulate Robot 64 Engine.
 
 ## Emulation Progress
 In here progress will be shown on emulating Robot 64 Engine, how far it has gone in the main function and what errored.<br>
-`Reached instruction 751 / 12464`<br>
-`Error: save is not a valid member of GameObject`<br>
-Context: This tries to access workspace.share.save, share has no class and save does not exist.
+`Reached instruction 1231 / 12464`<br>
+`Error: N/A`<br>
+Context: Title loop is functioning as expected, but there is no implementation for mouse clicking of TextButtons to escape the `istitle` loop.
 
 ## Opcode Support
 This is a list of all the opcodes Luauni currently supports.<br>
