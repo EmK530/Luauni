@@ -33,6 +33,9 @@ public static class Globals
         list["workspace"] = Workspace.instance.GetType();
         list["Enum"] = typeof(Enum);
         list["Vector3"] = typeof(Vector3);
+        list["Color3"] = typeof(Color3);
+        list["CFrame"] = typeof(CoordinateFrame);
+        list["UDim2"] = typeof(UDim2);
         initialized = true;
     }
 
@@ -82,6 +85,17 @@ public static class Globals
         {
             Logging.Warn($"Global name '{name}' is not registered.", "Globals:Get");
             return null;
+        }
+    }
+    public static object NativeGet(string name)
+    {
+        if (list.TryGetValue(name, out var value))
+        {
+            return value;
+        }
+        else
+        {
+            return "null";
         }
     }
     public static void Set(string name, object value)
@@ -150,6 +164,11 @@ public static class GC
             first = false;
         }
         UnityEngine.Debug.LogWarning("[Bytecode] " + output);
+        yield break;
+    }
+    public static System.Collections.IEnumerator tick(CallData dat)
+    {
+        Luau.returnToProto(ref dat, new object[1] { Time.realtimeSinceStartupAsDouble });
         yield break;
     }
     public static System.Collections.IEnumerator tonumber(CallData dat)

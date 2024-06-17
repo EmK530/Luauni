@@ -6,6 +6,9 @@ public class Mouse : MonoBehaviour
 {
     public static Mouse instance;
 
+    public static double X;
+    public static double Y;
+
     public static RBXScriptSignal Button1Down = new RBXScriptSignal();
     public static RBXScriptSignal Button1Up = new RBXScriptSignal();
     public static RBXScriptSignal Button2Down = new RBXScriptSignal();
@@ -29,5 +32,11 @@ public class Mouse : MonoBehaviour
             Debug.LogWarning($"Destroying duplicate singleton '{name}'");
             DestroyImmediate(gameObject);
         }
+    }
+
+    void Update()
+    {
+        X = Input.mousePosition.x;
+        Y = Input.mousePosition.y;
     }
 }

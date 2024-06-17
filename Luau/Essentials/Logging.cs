@@ -3,7 +3,7 @@ using UnityEngine;
 
 public static class Logging
 {
-    public static bool ShowDebug = true;
+    public static bool ShowDebug = false;
 
     public static string LastError = "N/A";
 

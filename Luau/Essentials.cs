@@ -1,6 +1,7 @@
 #pragma warning disable CS8632
 
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Reflection;
 using UnityEngine;
@@ -317,7 +318,7 @@ public static class ParseEssentials
         for (int j = 0; j < p.sizek; ++j)
         {
             LuauBytecodeTag read = (LuauBytecodeTag)br.ReadByte();
-            Logging.Debug("j: " + j + " ("+read+")");
+            //Logging.Debug("j: " + j + " ("+read+")");
             switch (read)
             {
                 case LuauBytecodeTag.LBC_CONSTANT_NIL:
@@ -346,8 +347,8 @@ public static class ParseEssentials
                     for (int k = 0; k < keys; ++k)
                     {
                         int temp = br.ReadVariableLen();
-                        Logging.Debug(temp);
-                        Logging.Debug(tbl[temp - tables]);
+                        //Logging.Debug(temp);
+                        //Logging.Debug(tbl[temp - tables]);
                         kt.Add(tbl[temp - tables],null); // hacky solution because there was a bug
                     }
                     tables++;
@@ -377,6 +378,31 @@ public static class ParseEssentials
 
 public static class Misc
 {
+    public static IEnumerator ExecuteCoroutine(IEnumerator coroutine)
+    {
+        Stack<IEnumerator> stack = new Stack<IEnumerator>();
+        stack.Push(coroutine);
+
+        while (stack.Count > 0)
+        {
+            var current = stack.Peek();
+            if (current.MoveNext())
+            {
+                if (current.Current is IEnumerator next)
+                {
+                    stack.Push(next);
+                }
+                else
+                {
+                    yield return current.Current;
+                }
+            }
+            else
+            {
+                stack.Pop();
+            }
+        }
+    }
     public static void SummonClosure(Closure cl, object[] args)
     {
         SClosure create = new SClosure()
@@ -389,6 +415,15 @@ public static class Misc
         create.cL.Add(null);
         cl.owner.delayed.Add(create);
     }
+    public static string GetTypeName(object value)
+    {
+        Type t = value.GetType();
+        if(t == typeof(object[]) || t == typeof(NamedDict) || t == typeof(Dictionary<string, object>))
+        {
+            return "table";
+        }
+        return value.ToString();
+    }
     public static object TryGetType(Transform v2)
     {
         Type type = GetTypeByName(v2.tag);
@@ -400,7 +435,8 @@ public static class Misc
                 return component;
             }
         }
-        Logging.Warn($"Returned GameObject with no known class: {v2.name}", "Luauni:Misc:TGT");
+        if (Logging.ShowDebug)
+            Logging.Warn($"Returned GameObject with no known class: {v2.name}", "Luauni:Misc:TGT");
         return v2.gameObject;
     }
     public static (bool,Component) TryGetTypeStrict(Transform v2)

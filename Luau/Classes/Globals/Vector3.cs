@@ -7,16 +7,16 @@ public class Vector3
 {
     public readonly string ClassName = "Vector3";
 
-    public readonly float x, y, z;
-    public readonly float magnitude;
+    public double x, y, z;
+    public readonly double Magnitude;
     public Vector3 unit { get { return normalize(this); } }
 
-    public Vector3(float x = 0, float y = 0, float z = 0)
+    public Vector3(double x = 0, double y = 0, double z = 0)
     {
         this.x = x;
         this.y = y;
         this.z = z;
-        magnitude = calcMagnitude(this);
+        Magnitude = calcMagnitude(this);
     }
 
     // opperator overloads
@@ -56,6 +56,28 @@ public class Vector3
         return new Vector3(a.x * b.x, a.y * b.y, a.z * b.z);
     }
 
+    public static Vector3 operator *(Quaternion rotation, Vector3 point)
+    {
+        float num = rotation.x * 2f;
+        float num2 = rotation.y * 2f;
+        float num3 = rotation.z * 2f;
+        float num4 = rotation.x * num;
+        float num5 = rotation.y * num2;
+        float num6 = rotation.z * num3;
+        float num7 = rotation.x * num2;
+        float num8 = rotation.x * num3;
+        float num9 = rotation.y * num3;
+        float num10 = rotation.w * num;
+        float num11 = rotation.w * num2;
+        float num12 = rotation.w * num3;
+        Vector3 result = new Vector3(
+            (1f - (num5 + num6)) * point.x + (num7 - num12) * point.y + (num8 + num11) * point.z,
+            (num7 + num12) * point.x + (1f - (num4 + num6)) * point.y + (num9 - num10) * point.z,
+            (num8 - num11) * point.x + (num9 + num10) * point.y + (1f - (num4 + num5)) * point.z
+        );
+        return result;
+    }
+
     public static Vector3 operator /(Vector3 a, Vector3 b)
     {
         return new Vector3(a.x / b.x, a.y / b.y, a.z / b.z);
@@ -63,7 +85,7 @@ public class Vector3
 
     public static implicit operator UnityEngine.Vector3(Vector3 v)
     {
-        return new UnityEngine.Vector3(v.x, v.y, v.z);
+        return new UnityEngine.Vector3(Convert.ToSingle(v.x), Convert.ToSingle(v.y), Convert.ToSingle(v.z));
     }
 
     public static implicit operator Vector3(UnityEngine.Vector3 v)
@@ -78,19 +100,19 @@ public class Vector3
 
     // statics
 
-    private static float calcMagnitude(Vector3 v)
+    private static double calcMagnitude(Vector3 v)
     {
-        return (float)Math.Sqrt(Dot(v, v));
+        return Math.Sqrt(Dot(v, v));
     }
 
     private static Vector3 normalize(Vector3 v)
     {
-        float m = calcMagnitude(v);
-        float nx = v.x / m, ny = v.y / m, nz = v.z / m;
+        double m = calcMagnitude(v);
+        double nx = v.x / m, ny = v.y / m, nz = v.z / m;
         return new Vector3(nx, ny, nz);
     }
 
-    public static float Dot(Vector3 a, Vector3 b)
+    public static double Dot(Vector3 a, Vector3 b)
     {
         return a.x * b.x + a.y * b.y + a.z * b.z;
     }

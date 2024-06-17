@@ -1,7 +1,8 @@
 using System.Collections;
 using UnityEngine;
+using UnityEngine.EventSystems;
 
-public class TextButton : MonoBehaviour
+public class TextButton : MonoBehaviour, IPointerEnterHandler
 {
     public readonly string ClassName = "TextButton";
     public string Name
@@ -14,6 +15,13 @@ public class TextButton : MonoBehaviour
     public RBXScriptSignal InputBegan = new RBXScriptSignal();
     public RBXScriptSignal InputEnded = new RBXScriptSignal();
     public RBXScriptSignal InputChanged = new RBXScriptSignal();
+    public RBXScriptSignal MouseEnter = new RBXScriptSignal();
+    public RBXScriptSignal MouseLeave = new RBXScriptSignal();
+
+    public void OnPointerEnter(PointerEventData eventData)
+    {
+        MouseEnter._fire(new object[0]);
+    }
 
     [SerializeField]
     private bool _visible = true;
