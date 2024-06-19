@@ -1,9 +1,10 @@
+using System;
 using System.Collections;
 using UnityEngine;
 
-public class Part : MonoBehaviour
+public class IntValue : MonoBehaviour
 {
-    public readonly string ClassName = "BasePart";
+    public readonly string ClassName = "IntValue";
 
     public object Parent
     {
@@ -14,12 +15,21 @@ public class Part : MonoBehaviour
         }
     }
 
-    public RBXScriptSignal Touched = new RBXScriptSignal();
+    [SerializeField]
+    private long _value = 0;
+    public double Value
+    {
+        get { return _value; }
+        set
+        {
+            _value = Convert.ToInt64(value);
+        }
+    }
 
     public static bool isObject = true;
 
     void Start()
     {
-        
+        gameObject.SetActive(false);
     }
 }

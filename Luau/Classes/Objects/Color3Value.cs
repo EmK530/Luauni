@@ -1,9 +1,10 @@
+using System;
 using System.Collections;
 using UnityEngine;
 
-public class Frame : MonoBehaviour
+public class Color3Value : MonoBehaviour
 {
-    public readonly string ClassName = "Frame";
+    public readonly string ClassName = "Color3Value";
 
     public object Parent
     {
@@ -15,14 +16,13 @@ public class Frame : MonoBehaviour
     }
 
     [SerializeField]
-    private bool _visible = true;
-    public bool Visible
+    private Color _value;
+    public Color3 Value
     {
-        get { return _visible; }
+        get { return new Color3(_value.r, _value.g, _value.b); }
         set
         {
-            _visible = value;
-            gameObject.SetActive(value);
+            _value = new Color(value.r, value.g, value.b);
         }
     }
 
@@ -30,6 +30,6 @@ public class Frame : MonoBehaviour
 
     void Start()
     {
-        gameObject.SetActive(_visible);
+        gameObject.SetActive(false);
     }
 }

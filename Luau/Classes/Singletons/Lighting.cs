@@ -23,7 +23,7 @@ public class Lighting : MonoBehaviour
         get { return _colorshift_top; }
         set
         {
-            Logging.Warn("Use of unsupported property, Lighting.ColorShift_Top", "Lighting:Property");
+            Logging.Warn("Ignoring unsupported property.", "Lighting:ColorShift_Top");
             _colorshift_top = value;
         }
     }

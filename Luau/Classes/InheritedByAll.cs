@@ -1,8 +1,5 @@
-using System;
 using System.Collections;
 using System.Collections.Generic;
-using System.Reflection;
-using System.Runtime.ConstrainedExecution;
 using UnityEngine;
 
 public static class InheritedByAll
@@ -24,6 +21,19 @@ public static class InheritedByAll
     {
         GameObject.DestroyImmediate(Misc.SafeGameObjectFromClass(dat.initiator.recentNameCalledRegister));
         Luau.returnToProto(ref dat, new object[0]);
+        yield break;
+    }
+    public static IEnumerator GetChildren(CallData dat)
+    {
+        GameObject tosearch = Misc.SafeGameObjectFromClass(dat.initiator.recentNameCalledRegister);
+        List<object> children = new List<object>();
+        foreach (Transform child in tosearch.transform)
+        {
+            children.Add(Misc.TryGetType(child));
+        }
+        object[] sendback = children.ToArray();
+        children.Clear();
+        Luau.returnToProto(ref dat, new object[1] { sendback });
         yield break;
     }
     private static List<object> DescendantsCache = new List<object>();

@@ -2,7 +2,7 @@ using System.Collections;
 using UnityEngine;
 using UnityEngine.EventSystems;
 
-public class TextButton : MonoBehaviour, IPointerEnterHandler
+public class TextButton : MonoBehaviour, IPointerEnterHandler, IPointerClickHandler
 {
     public readonly string ClassName = "TextButton";
     public string Name
@@ -10,7 +10,15 @@ public class TextButton : MonoBehaviour, IPointerEnterHandler
         get { return transform.name; }
         set { transform.name = value; }
     }
-    
+    public object Parent
+    {
+        get { return Misc.TryGetType(transform.parent); }
+        set
+        {
+            transform.SetParent(Misc.SafeGameObjectFromClass(value).transform);
+        }
+    }
+
     public RBXScriptSignal MouseButton1Click = new RBXScriptSignal();
     public RBXScriptSignal InputBegan = new RBXScriptSignal();
     public RBXScriptSignal InputEnded = new RBXScriptSignal();
@@ -18,10 +26,8 @@ public class TextButton : MonoBehaviour, IPointerEnterHandler
     public RBXScriptSignal MouseEnter = new RBXScriptSignal();
     public RBXScriptSignal MouseLeave = new RBXScriptSignal();
 
-    public void OnPointerEnter(PointerEventData eventData)
-    {
-        MouseEnter._fire(new object[0]);
-    }
+    public void OnPointerEnter(PointerEventData eventData) { MouseEnter._fire(new object[0]); }
+    public void OnPointerClick(PointerEventData eventData) { MouseButton1Click._fire(new object[0]); }
 
     [SerializeField]
     private bool _visible = true;

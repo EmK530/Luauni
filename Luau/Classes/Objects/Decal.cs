@@ -1,9 +1,9 @@
 using System.Collections;
 using UnityEngine;
 
-public class Part : MonoBehaviour
+public class Decal : MonoBehaviour
 {
-    public readonly string ClassName = "BasePart";
+    public readonly string ClassName = "Decal";
 
     public object Parent
     {
@@ -13,8 +13,6 @@ public class Part : MonoBehaviour
             transform.SetParent(Misc.SafeGameObjectFromClass(value).transform);
         }
     }
-
-    public RBXScriptSignal Touched = new RBXScriptSignal();
 
     public static bool isObject = true;
 

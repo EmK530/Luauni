@@ -142,13 +142,13 @@ public class Vector3
                 Luau.returnToProto(ref dat, new object[1] { new Vector3() });
                 break;
             case 1:
-                Luau.returnToProto(ref dat, new object[1] { new Vector3((float)inp[0]) });
+                Luau.returnToProto(ref dat, new object[1] { new Vector3(Convert.ToInt32(inp[0])) });
                 break;
             case 2:
-                Luau.returnToProto(ref dat, new object[1] { new Vector3((float)inp[0], (float)inp[1]) });
+                Luau.returnToProto(ref dat, new object[1] { new Vector3(Convert.ToInt32(inp[0]), Convert.ToInt32(inp[1])) });
                 break;
             default:
-                Luau.returnToProto(ref dat, new object[1] { new Vector3((float)inp[0], (float)inp[1], (float)inp[2]) });
+                Luau.returnToProto(ref dat, new object[1] { new Vector3(Convert.ToInt32(inp[0]), Convert.ToInt32(inp[1]), Convert.ToInt32(inp[2])) });
                 break;
         }
         yield break;

@@ -6,6 +6,15 @@ public class RemoteEvent : MonoBehaviour
 {
     public readonly string ClassName = "RemoteEvent";
 
+    public object Parent
+    {
+        get { return Misc.TryGetType(transform.parent); }
+        set
+        {
+            transform.SetParent(Misc.SafeGameObjectFromClass(value).transform);
+        }
+    }
+
     public IEnumerator FireServer(CallData dat)
     {
         object[] inp = Luau.getAllArgs(ref dat);

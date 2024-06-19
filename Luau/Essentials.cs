@@ -188,12 +188,8 @@ public static class Luau
         Type t = v1.GetType();
         if (t == typeof(bool)) {
             return (bool)v1;
-        } else if (t == typeof(double)){
-            return ((double)v1) == 0;
-        } else if (t == typeof(string)){
-            return ((string)v1) == "";
         }
-        return false;
+        return true;
     }
     public static object SAFEINDEX(object v1, string key)
     {

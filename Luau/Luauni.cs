@@ -6,7 +6,10 @@ using System.IO;
 using System.Reflection;
 using UnityEngine.UI;
 using UnityEngine;
+using Newtonsoft.Json;
 using TMPro;
+using System.Diagnostics;
+using System.Linq;
 
 public struct LuauniConfig
 {
@@ -32,18 +35,42 @@ public class Luauni : MonoBehaviour
 
     void Start()
     {
+        Dictionary<string, bool> cfg = new Dictionary<string, bool>()
+        {
+            ["debugGlobals"] = false,
+            ["yieldPerInstruction"] = false,
+            ["logEmulationDebug"] = false
+        };
         if (!File.Exists("config.json"))
         {
-            File.WriteAllText("config.json",JsonUtility.ToJson(new LuauniConfig()
-            {
-                debugGlobals = false,
-                yieldPerInstruction = false
-            }));
+            File.WriteAllText("config.json",JsonConvert.SerializeObject(cfg, Formatting.Indented));
         } else
         {
-            LuauniConfig cfg = JsonUtility.FromJson<LuauniConfig>(File.ReadAllText("config.json"));
-            config[0] = cfg.debugGlobals;
-            config[1] = cfg.yieldPerInstruction;
+            Dictionary<string, bool> cfg2 = JsonConvert.DeserializeObject<Dictionary<string, bool>>(File.ReadAllText("config.json"));
+            foreach(string i in cfg.Keys.ToArray<string>())
+            {
+                bool value = false;
+                if (!cfg2.TryGetValue(i, out value))
+                {
+                    value = cfg[i];
+                } else
+                {
+                    cfg[i] = value;
+                }
+                switch(i)
+                {
+                    case "debugGlobals":
+                        config[0] = value;
+                        break;
+                    case "yieldPerInstruction":
+                        config[1] = value;
+                        break;
+                    case "logEmulationDebug":
+                        Logging.ShowDebug = value;
+                        break;
+                }
+            }
+            File.WriteAllText("config.json", JsonConvert.SerializeObject(cfg, Formatting.Indented));
         }
 
         if (!Globals.IsInitialized())
@@ -58,21 +85,56 @@ public class Luauni : MonoBehaviour
             }
         }
 
-        if (File.Exists(Application.streamingAssetsPath + "\\Scripts\\" + targetScript + ".bin"))
+        if (File.Exists(Application.streamingAssetsPath + "\\Scripts\\" + targetScript + ".lua"))
         {
-            br = new ByteReader(File.ReadAllBytes(Application.streamingAssetsPath + "\\Scripts\\" + targetScript + ".bin"));
-            Parse();
-            /*
-            if (ready)
-                if (tag == "LocalScript" && Array.IndexOf(validExecutionSpots, transform.parent.tag) >= 0)
+            if(File.Exists(Application.streamingAssetsPath + "\\luau-compile.exe"))
+            {
+                Logging.Print($"Compiling {Application.streamingAssetsPath}\\Scripts\\{targetScript}.lua");
+                Process compile = new Process()
                 {
-                    Logging.Debug(targetScript + " will execute.");
-                    StartCoroutine(Execute());
+                    StartInfo =
+                    {
+                        FileName = Application.streamingAssetsPath + "\\luau-compile.exe",
+                        Arguments = $"--binary -O0 -g0 \"{Application.streamingAssetsPath + "\\Scripts\\" + targetScript + ".lua"}\"",
+                        RedirectStandardOutput = true,
+                        UseShellExecute = false,
+                        CreateNoWindow = true
+                    }
+                };
+                using (FileStream outputFile = new FileStream(Application.streamingAssetsPath + "\\Compiled\\" + targetScript + ".bin", FileMode.Create))
+                {
+                    compile.Start();
+                    byte[] buffer = new byte[4096];
+                    int bytesRead;
+                    while ((bytesRead = compile.StandardOutput.BaseStream.Read(buffer, 0, buffer.Length)) > 0)
+                    {
+                        outputFile.Write(buffer, 0, bytesRead);
+                    }
                 }
-            */
+                string stdout = compile.StandardOutput.ReadToEnd();
+                string stderr = compile.StandardOutput.ReadToEnd();
+                compile.WaitForExit();
+                if (File.Exists(Application.streamingAssetsPath + "\\Compiled\\" + targetScript + ".bin"))
+                {
+                    Logging.Print("Script compiled, attempting read...");
+                    br = new ByteReader(File.ReadAllBytes(Application.streamingAssetsPath + "\\Compiled\\" + targetScript + ".bin"));
+                    Parse();
+                    /*
+                    if (ready)
+                        if (tag == "LocalScript" && Array.IndexOf(validExecutionSpots, transform.parent.tag) >= 0)
+                        {
+                            Logging.Debug(targetScript + " will execute.");
+                            StartCoroutine(Execute());
+                        }
+                    */
+                }
+            } else {
+                Logging.Error("Could not find luau-compile.exe, cannot compile.", "Luauni:Start");
+                enabled = false;
+            }
         } else
         {
-            Logging.Error("Could not load script file: " + targetScript, "Luauni:Start");
+            Logging.Error("Could not find script file: " + targetScript + ".lua", "Luauni:Start");
             enabled = false;
         }
     }
@@ -244,14 +306,6 @@ public class Luauni : MonoBehaviour
             if (!main.complete && (!main.yielded || ((main.type == YieldType.Any || hybridLoop) && Time.realtimeSinceStartupAsDouble >= main.resumeAt)))
             {
                 yield return Misc.ExecuteCoroutine(Execute(main));
-            } else
-            {
-                Logging.Warn(main.complete);
-                Logging.Warn(main.yielded);
-                Logging.Warn(main.type);
-                Logging.Warn(main.resumeAt);
-                Logging.Warn(Time.realtimeSinceStartupAsDouble);
-                Logging.Warn(hybridLoop);
             }
             List<SClosure> noncleared = new List<SClosure>();
             foreach(SClosure s in delayed)
@@ -489,7 +543,7 @@ public class Luauni : MonoBehaviour
                     {
                         int targ = (int)Luau.INSN_A(inst);
                         int jmp = Luau.INSN_D(inst);
-                        Type t = target.pL[target.cEL].registers[targ].GetType();
+                        Type t = Misc.SafeType(target.pL[target.cEL].registers[targ]);
                         uint varcount = target.nextInst();
                         (bool, object[]) get;
                         if (t == typeof(TableIterator))
@@ -634,9 +688,9 @@ public class Luauni : MonoBehaviour
                                 Logging.Error($"{key} is not a valid member of {nd.name}", "Luauni:Step"); target.complete = true; yield break;
                             }
                         }
-                        else if(t == typeof(GameObject))
+                        else if(t == typeof(GameObject) || key == "camera")
                         {
-                            GameObject obj = (GameObject)tgt;
+                            GameObject obj = (GameObject)(t == typeof(GameObject) ? tgt : Misc.SafeGameObjectFromClass(tgt));
                             Transform find = obj.transform.Find(key);
                             if (find != null)
                             {

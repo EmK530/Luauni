@@ -1,9 +1,9 @@
 using System.Collections;
 using UnityEngine;
 
-public class Part : MonoBehaviour
+public class StringValue : MonoBehaviour
 {
-    public readonly string ClassName = "BasePart";
+    public readonly string ClassName = "StringValue";
 
     public object Parent
     {
@@ -14,12 +14,21 @@ public class Part : MonoBehaviour
         }
     }
 
-    public RBXScriptSignal Touched = new RBXScriptSignal();
+    [SerializeField]
+    private string _value = "";
+    public string Value
+    {
+        get { return _value; }
+        set
+        {
+            _value = value;
+        }
+    }
 
     public static bool isObject = true;
 
     void Start()
     {
-        
+        gameObject.SetActive(false);
     }
 }
