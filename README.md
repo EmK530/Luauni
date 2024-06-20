@@ -4,8 +4,8 @@ The current goal is trying to emulate Robot 64 Engine.
 
 ## Emulation Progress
 In here progress will be shown on emulating Robot 64 Engine, how far it has gone in the main function and what errored.<br>
-`Reached instruction 1349 / 12480`<br>
-`Error: AbsoluteSize is not a valid member of GameObject`<br>
+`Reached instruction 1433 / 12480`<br>
+`Error: ClearAllChildren is not a valid member of mapdebris (UnityEngine.GameObject)`<br>
 
 ## Opcode Support
 This is a list of all the opcodes Luauni currently supports.<br>
