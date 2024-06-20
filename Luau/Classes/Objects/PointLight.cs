@@ -6,6 +6,15 @@ public class PointLight : MonoBehaviour
 {
     public readonly string ClassName = "PointLight";
 
+    public string Name
+    {
+        get { return name; }
+        set
+        {
+            name = value;
+        }
+    }
+
     public object Parent
     {
         get { return Misc.TryGetType(transform.parent); }

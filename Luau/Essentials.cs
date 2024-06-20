@@ -151,6 +151,10 @@ public static class Luau
     public static int INSN_E(uint insn) => (int)(insn >> 8);
     public static bool EQUAL(object v1, object v2)
     {
+        if(v1 == null || v2 == null)
+        {
+            return v1 == null && v2 == null;
+        }
         Type t1 = v1.GetType();
         Type t2 = v2.GetType();
         if (t1 == typeof(double) && t2 == typeof(double))

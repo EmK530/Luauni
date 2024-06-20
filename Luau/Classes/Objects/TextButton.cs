@@ -7,8 +7,11 @@ public class TextButton : MonoBehaviour, IPointerEnterHandler, IPointerClickHand
     public readonly string ClassName = "TextButton";
     public string Name
     {
-        get { return transform.name; }
-        set { transform.name = value; }
+        get { return name; }
+        set
+        {
+            name = value;
+        }
     }
     public object Parent
     {

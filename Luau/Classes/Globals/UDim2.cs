@@ -5,8 +5,8 @@ using UnityEngine;
 
 public struct UICoords
 {
-    public double x;
-    public double y;
+    public double X;
+    public double Y;
 }
 
 public class UDim2
@@ -20,13 +20,13 @@ public class UDim2
     {
         Scale = new UICoords()
         {
-            x = xScale,
-            y = yScale
+            X = xScale,
+            Y = yScale
         };
         Offset = new UICoords()
         {
-            x = xOffset,
-            y = yOffset
+            X = xOffset,
+            Y = yOffset
         };
     }
 

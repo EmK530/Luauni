@@ -7,14 +7,14 @@ public class Vector2
 {
     public readonly string ClassName = "Vector2";
 
-    public double x, y, z;
+    public double X, Y;
     public readonly double Magnitude;
     public Vector2 unit { get { return normalize(this); } }
 
     public Vector2(double x = 0, double y = 0)
     {
-        this.x = x;
-        this.y = y;
+        this.X = x;
+        this.Y = y;
         Magnitude = calcMagnitude(this);
     }
 
@@ -22,37 +22,37 @@ public class Vector2
 
     public static Vector2 operator -(Vector2 v)
     {
-        return new Vector2(-v.x, -v.y);
+        return new Vector2(-v.X, -v.Y);
     }
 
     public static Vector2 operator *(float k, Vector2 a)
     {
-        return new Vector2(a.x * k, a.y * k);
+        return new Vector2(a.X * k, a.Y * k);
     }
 
     public static Vector2 operator *(Vector2 a, float k)
     {
-        return new Vector2(a.x * k, a.y * k);
+        return new Vector2(a.X * k, a.Y * k);
     }
 
     public static Vector2 operator /(Vector2 a, float k)
     {
-        return new Vector2(a.x / k, a.y / k);
+        return new Vector2(a.X / k, a.Y / k);
     }
 
     public static Vector2 operator +(Vector2 a, Vector2 b)
     {
-        return new Vector2(a.x + b.x, a.y + b.y);
+        return new Vector2(a.X + b.X, a.Y + b.Y);
     }
 
     public static Vector2 operator -(Vector2 a, Vector2 b)
     {
-        return new Vector2(a.x - b.x, a.y - b.y);
+        return new Vector2(a.X - b.X, a.Y - b.Y);
     }
 
     public static Vector2 operator *(Vector2 a, Vector2 b)
     {
-        return new Vector2(a.x * b.x, a.y * b.y);
+        return new Vector2(a.X * b.X, a.Y * b.Y);
     }
 
     public static Vector2 operator *(Quaternion rotation, Vector2 point)
@@ -70,20 +70,20 @@ public class Vector2
         float num11 = rotation.w * num2;
         float num12 = rotation.w * num3;
         Vector2 result = new Vector2(
-            (1f - (num5 + num6)) * point.x + (num7 - num12) * point.y + (num8 + num11) * point.z,
-            (num7 + num12) * point.x + (1f - (num4 + num6)) * point.y + (num9 - num10) * point.z
+            (1f - (num5 + num6)) * point.X + (num7 - num12) * point.Y + (num8 + num11),
+            (num7 + num12) * point.X + (1f - (num4 + num6)) * point.Y + (num9 - num10)
         );
         return result;
     }
 
     public static Vector2 operator /(Vector2 a, Vector2 b)
     {
-        return new Vector2(a.x / b.x, a.y / b.y);
+        return new Vector2(a.X / b.X, a.Y / b.Y);
     }
 
     public static implicit operator UnityEngine.Vector2(Vector2 v)
     {
-        return new UnityEngine.Vector2(Convert.ToSingle(v.x), Convert.ToSingle(v.y));
+        return new UnityEngine.Vector2(Convert.ToSingle(v.X), Convert.ToSingle(v.Y));
     }
 
     public static implicit operator Vector2(UnityEngine.Vector2 v)
@@ -93,7 +93,7 @@ public class Vector2
 
     public override string ToString()
     {
-        return x + ", " + y + ", " + z;
+        return X + ", " + Y;
     }
 
     // statics
@@ -106,20 +106,19 @@ public class Vector2
     private static Vector2 normalize(Vector2 v)
     {
         double m = calcMagnitude(v);
-        double nx = v.x / m, ny = v.y / m, nz = v.z / m;
+        double nx = v.X / m, ny = v.Y / m;
         return new Vector2(nx, ny);
     }
 
     public static double Dot(Vector2 a, Vector2 b)
     {
-        return a.x * b.x + a.y * b.y + a.z * b.z;
+        return a.X * b.X + a.Y * b.Y;
     }
 
     public static Vector2 Cross(Vector2 a, Vector2 b)
     {
         return new Vector2(
-            a.y * b.z - b.y * a.z,
-            a.z * b.x - b.z * a.x
+            a.X - a.Y, b.Y - b.X
         );
     }
 
@@ -139,10 +138,10 @@ public class Vector2
                 Luau.returnToProto(ref dat, new object[1] { new Vector2() });
                 break;
             case 1:
-                Luau.returnToProto(ref dat, new object[1] { new Vector2(Convert.ToInt32(inp[0])) });
+                Luau.returnToProto(ref dat, new object[1] { new Vector2((double)inp[0]) });
                 break;
             default:
-                Luau.returnToProto(ref dat, new object[1] { new Vector2(Convert.ToInt32(inp[0]), Convert.ToInt32(inp[1])) });
+                Luau.returnToProto(ref dat, new object[1] { new Vector2((double)inp[0], (double)inp[1]) });
                 break;
         }
         yield break;

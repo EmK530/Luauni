@@ -5,6 +5,15 @@ public class Model : MonoBehaviour
 {
     public readonly string ClassName = "Model";
 
+    public string Name
+    {
+        get { return name; }
+        set
+        {
+            name = value;
+        }
+    }
+
     public object Parent
     {
         get { return Misc.TryGetType(transform.parent); }

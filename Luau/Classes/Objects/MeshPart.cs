@@ -6,6 +6,15 @@ public class MeshPart : MonoBehaviour
 {
     public readonly string ClassName = "MeshPart";
 
+    public string Name
+    {
+        get { return name; }
+        set
+        {
+            name = value;
+        }
+    }
+
     private MeshRenderer mr;
 
     public Color3 BrickColor

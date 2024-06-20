@@ -11,7 +11,8 @@ public class UserInputService : MonoBehaviour
         set
         {
             _mouseIconEnabled = value;
-            //Cursor.visible = value;
+            if(!Application.isEditor)
+                Cursor.visible = value;
         }
     }
 

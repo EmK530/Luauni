@@ -14,6 +14,15 @@ public class Part : MonoBehaviour
         }
     }
 
+    public double CollisionGroupId
+    {
+        get { return 1d; }
+        set
+        {
+            Logging.Warn("Support for this property is postponed.", "Part:CollisionGroupId");
+        }
+    }
+
     public RBXScriptSignal Touched = new RBXScriptSignal();
 
     public static bool isObject = true;

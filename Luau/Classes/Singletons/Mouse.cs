@@ -37,6 +37,6 @@ public class Mouse : MonoBehaviour
     void Update()
     {
         X = Input.mousePosition.x;
-        Y = Input.mousePosition.y;
+        Y = Screen.height - Input.mousePosition.y;
     }
 }

@@ -23,6 +23,19 @@ public static class InheritedByAll
         Luau.returnToProto(ref dat, new object[0]);
         yield break;
     }
+    public static IEnumerator FindFirstChild(CallData dat)
+    {
+        object[] inp = Luau.getAllArgs(ref dat);
+        GameObject tosearch = Misc.SafeGameObjectFromClass(dat.initiator.recentNameCalledRegister);
+        string key = (string)inp[1];
+        if (tosearch == null)
+        {
+            Logging.Error($"Internal error: Cannot perform FindFirstChild action on {dat.initiator.recentNameCalledRegister}", "Luauni:Step"); dat.initiator.globalErrored = true; yield break;
+        }
+        Transform find = tosearch.transform.Find(key);
+        Luau.returnToProto(ref dat, new object[1] { find != null ? Misc.TryGetType(find) : null });
+        yield break;
+    }
     public static IEnumerator GetChildren(CallData dat)
     {
         GameObject tosearch = Misc.SafeGameObjectFromClass(dat.initiator.recentNameCalledRegister);

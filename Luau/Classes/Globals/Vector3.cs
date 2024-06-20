@@ -7,15 +7,15 @@ public class Vector3
 {
     public readonly string ClassName = "Vector3";
 
-    public double x, y, z;
+    public double X, Y, Z;
     public readonly double Magnitude;
     public Vector3 unit { get { return normalize(this); } }
 
     public Vector3(double x = 0, double y = 0, double z = 0)
     {
-        this.x = x;
-        this.y = y;
-        this.z = z;
+        this.X = x;
+        this.Y = y;
+        this.Z = z;
         Magnitude = calcMagnitude(this);
     }
 
@@ -23,37 +23,37 @@ public class Vector3
 
     public static Vector3 operator -(Vector3 v)
     {
-        return new Vector3(-v.x, -v.y, -v.z);
+        return new Vector3(-v.X, -v.Y, -v.Z);
     }
 
     public static Vector3 operator *(float k, Vector3 a)
     {
-        return new Vector3(a.x * k, a.y * k, a.z * k);
+        return new Vector3(a.X * k, a.Y * k, a.Z * k);
     }
 
     public static Vector3 operator *(Vector3 a, float k)
     {
-        return new Vector3(a.x * k, a.y * k, a.z * k);
+        return new Vector3(a.X * k, a.Y * k, a.Z * k);
     }
 
     public static Vector3 operator /(Vector3 a, float k)
     {
-        return new Vector3(a.x / k, a.y / k, a.z / k);
+        return new Vector3(a.X / k, a.Y / k, a.Z / k);
     }
 
     public static Vector3 operator +(Vector3 a, Vector3 b)
     {
-        return new Vector3(a.x + b.x, a.y + b.y, a.z + b.z);
+        return new Vector3(a.X + b.X, a.Y + b.Y, a.Z + b.Z);
     }
 
     public static Vector3 operator -(Vector3 a, Vector3 b)
     {
-        return new Vector3(a.x - b.x, a.y - b.y, a.z - b.z);
+        return new Vector3(a.X - b.X, a.Y - b.Y, a.Z - b.Z);
     }
 
     public static Vector3 operator *(Vector3 a, Vector3 b)
     {
-        return new Vector3(a.x * b.x, a.y * b.y, a.z * b.z);
+        return new Vector3(a.X * b.X, a.Y * b.Y, a.Z * b.Z);
     }
 
     public static Vector3 operator *(Quaternion rotation, Vector3 point)
@@ -71,21 +71,21 @@ public class Vector3
         float num11 = rotation.w * num2;
         float num12 = rotation.w * num3;
         Vector3 result = new Vector3(
-            (1f - (num5 + num6)) * point.x + (num7 - num12) * point.y + (num8 + num11) * point.z,
-            (num7 + num12) * point.x + (1f - (num4 + num6)) * point.y + (num9 - num10) * point.z,
-            (num8 - num11) * point.x + (num9 + num10) * point.y + (1f - (num4 + num5)) * point.z
+            (1f - (num5 + num6)) * point.X + (num7 - num12) * point.Y + (num8 + num11) * point.Z,
+            (num7 + num12) * point.X + (1f - (num4 + num6)) * point.Y + (num9 - num10) * point.Z,
+            (num8 - num11) * point.X + (num9 + num10) * point.Y + (1f - (num4 + num5)) * point.Z
         );
         return result;
     }
 
     public static Vector3 operator /(Vector3 a, Vector3 b)
     {
-        return new Vector3(a.x / b.x, a.y / b.y, a.z / b.z);
+        return new Vector3(a.X / b.X, a.Y / b.Y, a.Z / b.Z);
     }
 
     public static implicit operator UnityEngine.Vector3(Vector3 v)
     {
-        return new UnityEngine.Vector3(Convert.ToSingle(v.x), Convert.ToSingle(v.y), Convert.ToSingle(v.z));
+        return new UnityEngine.Vector3(Convert.ToSingle(v.X), Convert.ToSingle(v.Y), Convert.ToSingle(v.Z));
     }
 
     public static implicit operator Vector3(UnityEngine.Vector3 v)
@@ -95,7 +95,7 @@ public class Vector3
 
     public override string ToString()
     {
-        return x + ", " + y + ", " + z;
+        return X + ", " + Y + ", " + Z;
     }
 
     // statics
@@ -108,21 +108,21 @@ public class Vector3
     private static Vector3 normalize(Vector3 v)
     {
         double m = calcMagnitude(v);
-        double nx = v.x / m, ny = v.y / m, nz = v.z / m;
+        double nx = v.X / m, ny = v.Y / m, nz = v.Z / m;
         return new Vector3(nx, ny, nz);
     }
 
     public static double Dot(Vector3 a, Vector3 b)
     {
-        return a.x * b.x + a.y * b.y + a.z * b.z;
+        return a.X * b.X + a.Y * b.Y + a.Z * b.Z;
     }
 
     public static Vector3 Cross(Vector3 a, Vector3 b)
     {
         return new Vector3(
-            a.y * b.z - b.y * a.z,
-            a.z * b.x - b.z * a.x,
-            a.x * b.y - b.x * a.y
+            a.Y * b.Z - b.Y * a.Z,
+            a.Z * b.X - b.Z * a.X,
+            a.X * b.Y - b.X * a.Y
         );
     }
 
@@ -142,13 +142,13 @@ public class Vector3
                 Luau.returnToProto(ref dat, new object[1] { new Vector3() });
                 break;
             case 1:
-                Luau.returnToProto(ref dat, new object[1] { new Vector3(Convert.ToInt32(inp[0])) });
+                Luau.returnToProto(ref dat, new object[1] { new Vector3((double)inp[0]) });
                 break;
             case 2:
-                Luau.returnToProto(ref dat, new object[1] { new Vector3(Convert.ToInt32(inp[0]), Convert.ToInt32(inp[1])) });
+                Luau.returnToProto(ref dat, new object[1] { new Vector3((double)inp[0], (double)inp[1]) });
                 break;
             default:
-                Luau.returnToProto(ref dat, new object[1] { new Vector3(Convert.ToInt32(inp[0]), Convert.ToInt32(inp[1]), Convert.ToInt32(inp[2])) });
+                Luau.returnToProto(ref dat, new object[1] { new Vector3((double)inp[0], (double)inp[1], (double)inp[2]) });
                 break;
         }
         yield break;

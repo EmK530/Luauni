@@ -1,10 +1,10 @@
-using System;
 using System.Collections;
+using TMPro;
 using UnityEngine;
 
-public class IntValue : MonoBehaviour
+public class ScreenGui : MonoBehaviour
 {
-    public readonly string ClassName = "IntValue";
+    public readonly string ClassName = "ScreenGui";
 
     public string Name
     {
@@ -24,21 +24,23 @@ public class IntValue : MonoBehaviour
         }
     }
 
-    [SerializeField]
-    private long _value = 0;
-    public double Value
+    public Vector2 AbsoluteSize
     {
-        get { return _value; }
-        set
-        {
-            _value = Convert.ToInt64(value);
-        }
+        get { return new Vector2(Screen.width, Screen.height); }
+    }
+
+    [SerializeField]
+    private bool _enabled;
+    public bool Enabled
+    {
+        get { return _enabled; }
+        set { _enabled = value; gameObject.SetActive(value); }
     }
 
     public static bool isObject = true;
 
     void Start()
     {
-        gameObject.SetActive(false);
+        gameObject.SetActive(_enabled);
     }
 }

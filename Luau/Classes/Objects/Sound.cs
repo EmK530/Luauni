@@ -5,6 +5,15 @@ public class Sound : MonoBehaviour
 {
     public readonly string ClassName = "Sound";
 
+    public string Name
+    {
+        get { return name; }
+        set
+        {
+            name = value;
+        }
+    }
+
     public object Parent
     {
         get { return Misc.TryGetType(transform.parent); }
@@ -48,6 +57,7 @@ public class Sound : MonoBehaviour
 
     public IEnumerator Play(CallData dat)
     {
+        if (src == null) { src = GetComponent<AudioSource>(); }
         src.Play();
         Luau.returnToProto(ref dat, new object[0]);
         yield break;
@@ -55,6 +65,7 @@ public class Sound : MonoBehaviour
 
     public IEnumerator Stop(CallData dat)
     {
+        if (src == null) { src = GetComponent<AudioSource>(); }
         src.Stop();
         Luau.returnToProto(ref dat, new object[0]);
         yield break;

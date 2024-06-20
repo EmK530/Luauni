@@ -10,6 +10,7 @@ public static class Services
         ["ReplicatedFirst"] = ReplicatedFirst.instance,
         ["UserInputService"] = UserInputService.instance,
         ["GuiService"] = GuiService.instance,
-        ["ContextActionService"] = ContextActionService.instance
+        ["ContextActionService"] = ContextActionService.instance,
+        ["RunService"] = RunService.instance,
     };
 }
