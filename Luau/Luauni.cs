@@ -95,7 +95,7 @@ public class Luauni : MonoBehaviour
                     StartInfo =
                     {
                         FileName = Application.streamingAssetsPath + "\\luau-compile.exe",
-                        Arguments = $"--binary -O0 -g0 \"{Application.streamingAssetsPath + "\\Scripts\\" + targetScript + ".lua"}\"",
+                        Arguments = $"--binary -O2 -g0 \"{Application.streamingAssetsPath + "\\Scripts\\" + targetScript + ".lua"}\"",
                         RedirectStandardOutput = true,
                         UseShellExecute = false,
                         CreateNoWindow = true
@@ -232,7 +232,7 @@ public class Luauni : MonoBehaviour
         Logging.Debug($"Script proto count: {protoCount}", "Luauni:Parse");
         for(int i = 0; i < protoCount; i++)
         {
-            Proto p = ParseEssentials.PrepareProto(br, i, stringtable);
+            Proto p = ParseEssentials.PrepareProto(br, i, stringtable, transform, protos, this);
             for (int j = 0; j < p.sizep; ++j)
             {
                 int read = br.ReadVariableLen();
@@ -410,12 +410,23 @@ public class Luauni : MonoBehaviour
                 case LuauOpcode.LOP_PREPVARARGS:
                 case LuauOpcode.LOP_GETVARARGS:
                 case LuauOpcode.LOP_CLOSEUPVALS:
+                case LuauOpcode.LOP_FASTCALL:
+                case LuauOpcode.LOP_FASTCALL1:
+                case LuauOpcode.LOP_FASTCALL2:
+                case LuauOpcode.LOP_FASTCALL2K:
                     Logging.Warn($"Ignoring opcode not planned to support: {opcode}", "Luauni:Step");
                     break;
                 case LuauOpcode.LOP_ADD:
                     {
                         double rg1 = (double)target.pL[target.cEL].registers[Luau.INSN_B(inst)];
                         double rg2 = (double)target.pL[target.cEL].registers[Luau.INSN_C(inst)];
+                        target.pL[target.cEL].registers[Luau.INSN_A(inst)] = rg1 + rg2;
+                    }
+                    break;
+                case LuauOpcode.LOP_ADDK:
+                    {
+                        double rg1 = (double)target.pL[target.cEL].registers[Luau.INSN_B(inst)];
+                        double rg2 = (double)target.pL[target.cEL].k[Luau.INSN_C(inst)];
                         target.pL[target.cEL].registers[Luau.INSN_A(inst)] = rg1 + rg2;
                     }
                     break;
@@ -527,11 +538,21 @@ public class Luauni : MonoBehaviour
                         target.pL[target.cEL].registers[Luau.INSN_A(inst)] = rg1 / rg2;
                     }
                     break;
+                case LuauOpcode.LOP_DIVK:
+                    {
+                        double rg1 = (double)target.pL[target.cEL].registers[Luau.INSN_B(inst)];
+                        double rg2 = (double)target.pL[target.cEL].k[Luau.INSN_C(inst)];
+                        target.pL[target.cEL].registers[Luau.INSN_A(inst)] = rg1 / rg2;
+                    }
+                    break;
+                case LuauOpcode.LOP_DUPCLOSURE:
                 case LuauOpcode.LOP_DUPTABLE:
                     {
+                        Logging.Warn(target.pL[target.cEL].k[Luau.INSN_D(inst)]);
                         target.pL[target.cEL].registers[Luau.INSN_A(inst)] = target.pL[target.cEL].k[Luau.INSN_D(inst)];
                         break;
                     }
+                case LuauOpcode.LOP_FORGPREP_NEXT:
                 case LuauOpcode.LOP_FORGPREP:
                     {
                         int targ = (int)Luau.INSN_A(inst);
@@ -599,6 +620,30 @@ public class Luauni : MonoBehaviour
                         {
                             target.pL[target.cEL].registers[Luau.INSN_A(inst)] = Globals.Get(key);
                         }
+                        break;
+                    }
+                case LuauOpcode.LOP_GETIMPORT:
+                    {
+                        Proto p = target.pL[target.cEL];
+                        uint aux = target.nextInst();
+                        int pathLength = (int)(aux >> 30);
+                        List<string> importPathParts = new List<string>();
+                        for (int a = 0; a < pathLength; a++)
+                        {
+                            int shiftAmount = 10 * a;
+                            int index = (int)((aux >> (20 - shiftAmount)) & 1023);
+                            if (index >= p.k.Length)
+                            {
+                                Logging.Error($"Invalid constant index for GETIMPORT: {index}."); target.complete = true; yield break;
+                            }
+                            else
+                            {
+                                importPathParts.Add(p.k[index].ToString());
+                            }
+                        }
+                        string importPath = string.Join('.', importPathParts);
+                        Logging.Print(importPath);
+                        target.pL[target.cEL].registers[Luau.INSN_A(inst)] = p.imports[importPath];
                         break;
                     }
                 case LuauOpcode.LOP_GETTABLE:
@@ -710,6 +755,24 @@ public class Luauni : MonoBehaviour
                         }
                         break;
                     }
+                case LuauOpcode.LOP_GETTABLEN:
+                    {
+                        object rg = target.pL[target.cEL].registers[Luau.INSN_B(inst)];
+                        Type t = Misc.SafeType(rg);
+                        if (t == typeof(object[]))
+                        {
+                            object[] arr = (object[])rg;
+                            int index = Convert.ToInt32(Luau.INSN_C(inst)) - 1;
+                            target.pL[target.cEL].registers[Luau.INSN_A(inst)] = index < arr.Length && index >= 0 ? arr[index] : null;
+                        }
+                        else
+                        {
+                            Logging.Error($"Cannot perform GETTABLEN operation on variable of type {rg}", "Luauni:Step");
+                            target.complete = true;
+                            yield break;
+                        }
+                        break;
+                    }
                 case LuauOpcode.LOP_GETUPVAL:
                     {
                         uint idx = Luau.INSN_B(inst);
@@ -756,13 +819,15 @@ public class Luauni : MonoBehaviour
                     }
                     break;
                 case LuauOpcode.LOP_JUMPIFEQ:
-                    uint AUX = target.nextInst();
-                    if (Luau.EQUAL(target.pL[target.cEL].registers[Luau.INSN_A(inst)], target.pL[target.cEL].registers[AUX]))
                     {
-                        Logging.Debug("JUMPIFEQ PASS");
-                        target.jumpSteps(Luau.INSN_D(inst) - 1);
+                        uint AUX = target.nextInst();
+                        if (Luau.EQUAL(target.pL[target.cEL].registers[Luau.INSN_A(inst)], target.pL[target.cEL].registers[AUX]))
+                        {
+                            Logging.Debug("JUMPIFEQ PASS");
+                            target.jumpSteps(Luau.INSN_D(inst) - 1);
+                        }
+                        break;
                     }
-                    break;
                 case LuauOpcode.LOP_JUMPIFNOTEQ:
                     if (!Luau.EQUAL(target.pL[target.cEL].registers[Luau.INSN_A(inst)], target.pL[target.cEL].registers[target.nextInst()]))
                     {
@@ -784,6 +849,20 @@ public class Luauni : MonoBehaviour
                         target.jumpSteps(Luau.INSN_D(inst) - 1);
                     }
                     break;
+                case LuauOpcode.LOP_JUMPXEQKNIL:
+                case LuauOpcode.LOP_JUMPXEQKB:
+                case LuauOpcode.LOP_JUMPXEQKN:
+                case LuauOpcode.LOP_JUMPXEQKS:
+                    {
+                        uint AUX = target.nextInst();
+                        bool flip = (AUX >> 31) == 1 ? false : true;
+                        if (flip == Luau.EQUAL(target.pL[target.cEL].registers[Luau.INSN_A(inst)], target.pL[target.cEL].k[AUX & 16777215]))
+                        {
+                            Logging.Debug("JUMPXEQK PASS");
+                            target.jumpSteps(Luau.INSN_D(inst) - 1);
+                        }
+                        break;
+                    }
                 case LuauOpcode.LOP_LENGTH:
                     {
                         object reg = target.pL[target.cEL].registers[Luau.INSN_B(inst)];
@@ -807,7 +886,8 @@ public class Luauni : MonoBehaviour
                     target.jumpSteps((int)Luau.INSN_C(inst));
                     break;
                 case LuauOpcode.LOP_LOADK:
-                    object constant = target.pL[target.cEL].k[Luau.INSN_B(inst)];
+                    object constant = target.pL[target.cEL].k[Luau.INSN_D(inst)];
+                    Logging.Print(constant);
                     target.pL[target.cEL].registers[Luau.INSN_A(inst)] = constant;
                     break;
                 case LuauOpcode.LOP_LOADN:
@@ -838,10 +918,34 @@ public class Luauni : MonoBehaviour
                         target.pL[target.cEL].registers[Luau.INSN_A(inst)] = result;
                     }
                     break;
+                case LuauOpcode.LOP_MODK:
+                    {
+                        double rg1 = (double)target.pL[target.cEL].registers[Luau.INSN_B(inst)];
+                        double rg2 = (double)target.pL[target.cEL].k[Luau.INSN_C(inst)];
+                        double result = 0;
+                        if (double.IsInfinity(rg2))
+                        {
+                            result = double.NaN;
+                        }
+                        else
+                        {
+                            result = rg1 % rg2;
+                            if (rg2 < 0 && result >= 0) { result += rg2; }
+                        }
+                        target.pL[target.cEL].registers[Luau.INSN_A(inst)] = result;
+                    }
+                    break;
                 case LuauOpcode.LOP_MUL:
                     {
                         dynamic rg1 = target.pL[target.cEL].registers[Luau.INSN_B(inst)];
                         dynamic rg2 = target.pL[target.cEL].registers[Luau.INSN_C(inst)];
+                        target.pL[target.cEL].registers[Luau.INSN_A(inst)] = rg1 * rg2;
+                    }
+                    break;
+                case LuauOpcode.LOP_MULK:
+                    {
+                        dynamic rg1 = target.pL[target.cEL].registers[Luau.INSN_B(inst)];
+                        dynamic rg2 = target.pL[target.cEL].k[Luau.INSN_C(inst)];
                         target.pL[target.cEL].registers[Luau.INSN_A(inst)] = rg1 * rg2;
                     }
                     break;
@@ -892,6 +996,13 @@ public class Luauni : MonoBehaviour
                     {
                         double rg1 = (double)target.pL[target.cEL].registers[Luau.INSN_B(inst)];
                         double rg2 = (double)target.pL[target.cEL].registers[Luau.INSN_C(inst)];
+                        target.pL[target.cEL].registers[Luau.INSN_A(inst)] = Math.Pow(rg1, rg2);
+                    }
+                    break;
+                case LuauOpcode.LOP_POWK:
+                    {
+                        double rg1 = (double)target.pL[target.cEL].registers[Luau.INSN_B(inst)];
+                        double rg2 = (double)target.pL[target.cEL].k[Luau.INSN_C(inst)];
                         target.pL[target.cEL].registers[Luau.INSN_A(inst)] = Math.Pow(rg1, rg2);
                     }
                     break;
@@ -1008,6 +1119,16 @@ public class Luauni : MonoBehaviour
                             {
                                 nd.dict.Add(key, target.pL[target.cEL].registers[Luau.INSN_A(inst)]);
                             }
+                        } else if (t == typeof(Dictionary<string, object>))
+                        {
+                            Dictionary<string, object> arr = (Dictionary<string, object>)tgt;
+                            if (arr.ContainsKey(key))
+                            {
+                                arr[key] = target.pL[target.cEL].registers[Luau.INSN_A(inst)];
+                            } else
+                            {
+                                arr.Add(key, target.pL[target.cEL].registers[Luau.INSN_A(inst)]);
+                            }
                         } else
                         {
                             PropertyInfo p = t.GetProperty(key, search);
@@ -1027,6 +1148,37 @@ public class Luauni : MonoBehaviour
                                     Logging.Error($"{key} is not a valid member of {t}", "Luauni:Step"); target.complete = true; yield break;
                                 }
                             }
+                        }
+                        break;
+                    }
+                case LuauOpcode.LOP_SETTABLEN:
+                    {
+                        object rg = target.pL[target.cEL].registers[Luau.INSN_B(inst)];
+                        Type t = Misc.SafeType(rg);
+                        if (t == typeof(object[]))
+                        {
+                            object[] arr = (object[])rg;
+                            int index = Convert.ToInt32(Luau.INSN_C(inst)) - 1;
+                            if (arr.Length <= index)
+                            {
+                                Logging.Debug("Array extension required", "Luauni:Step");
+                                object[] newarr = new object[index+1];
+                                int a = 0;
+                                foreach(object i in arr)
+                                {
+                                    newarr[a] = i;
+                                    a++;
+                                }
+                                arr = newarr;
+                            }
+                            arr[index] = target.pL[target.cEL].registers[Luau.INSN_A(inst)];
+                            target.pL[target.cEL].registers[Luau.INSN_B(inst)] = arr;
+                        }
+                        else
+                        {
+                            Logging.Error($"Cannot perform SETTABLEN operation on variable of type {rg}", "Luauni:Step");
+                            target.complete = true;
+                            yield break;
                         }
                         break;
                     }
@@ -1054,6 +1206,13 @@ public class Luauni : MonoBehaviour
                     {
                         double rg1 = (double)target.pL[target.cEL].registers[Luau.INSN_B(inst)];
                         double rg2 = (double)target.pL[target.cEL].registers[Luau.INSN_C(inst)];
+                        target.pL[target.cEL].registers[Luau.INSN_A(inst)] = rg1 - rg2;
+                    }
+                    break;
+                case LuauOpcode.LOP_SUBK:
+                    {
+                        double rg1 = (double)target.pL[target.cEL].registers[Luau.INSN_B(inst)];
+                        double rg2 = (double)target.pL[target.cEL].k[Luau.INSN_C(inst)];
                         target.pL[target.cEL].registers[Luau.INSN_A(inst)] = rg1 - rg2;
                     }
                     break;

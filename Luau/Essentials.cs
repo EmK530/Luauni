@@ -3,8 +3,14 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Linq;
 using System.Reflection;
+using System.Xml.Linq;
+using Unity.VisualScripting;
+using UnityEditor.Searcher;
 using UnityEngine;
+using static UnityEngine.GraphicsBuffer;
+using static UnityEngine.Rendering.DebugUI;
 
 public class Proto
 {
@@ -20,6 +26,7 @@ public class Proto
     public Proto[] p;
     public uint[] code;
     public uint[] codeentry;
+    public Dictionary<string, object> imports;
     public object[] k; // danger
     public object?[] registers; // custom
     public uint callReg;
@@ -288,15 +295,15 @@ public static class Luau
 
 public static class ParseEssentials
 {
-    public static Proto PrepareProto(ByteReader br, int i, string[] tbl)
+    public static Proto PrepareProto(ByteReader br, int i, string[] tbl, Transform src, Proto[] protos, Luauni owner)
     {
         Proto p = new Proto();
         p.p = null;
         p.sizep = 0;
         p.flags = 0;
         p.codeentry = null;
-        p.registers = new object[255];
-
+        p.registers = new object[256];
+        p.imports = new Dictionary<string, object>();
         p.bytecodeid = i;
         p.maxstacksize = br.ReadByte();
         p.numparams = br.ReadByte();
@@ -313,7 +320,7 @@ public static class ParseEssentials
         p.sizek = br.ReadVariableLen();
         Logging.Debug($"Loading {p.sizek} constants for Proto {i}", "Luauni:Parse:PP");
         p.k = new object[p.sizek];
-
+        BindingFlags search = BindingFlags.Instance | BindingFlags.Static | BindingFlags.Public;
         int tables = 0;
         for (int j = 0; j < p.sizek; ++j)
         {
@@ -347,23 +354,154 @@ public static class ParseEssentials
                     for (int k = 0; k < keys; ++k)
                     {
                         int temp = br.ReadVariableLen();
-                        //Logging.Debug(temp);
-                        //Logging.Debug(tbl[temp - tables]);
                         kt.Add(tbl[temp - tables],null); // hacky solution because there was a bug
                     }
                     tables++;
                     p.k[j] = kt;
                     break;
                 case LuauBytecodeTag.LBC_CONSTANT_IMPORT:
-                    Logging.Warn("Found unimplemented import constant.", "Luauni:Parse:PP");
-                    //TODO: understand what the hell this is and don't skip
-                    br.Skip(4);
-                    break;
+                    {
+                        uint aux = br.ReadUInt32(Endian.Little);
+                        int pathLength = (int)(aux >> 30);
+                        List<string> importPathParts = new List<string>();
+                        for (int a = 0; a < pathLength; a++)
+                        {
+                            int shiftAmount = 10 * a;
+                            int index = (int)((aux >> (20 - shiftAmount)) & 1023);
+                            if (index >= p.k.Length)
+                            {
+                                Logging.Error($"Invalid constant index {index}.");
+                            }
+                            else
+                            {
+                                importPathParts.Add(p.k[index].ToString());
+                            }
+                        }
+                        string importPath = string.Join('.', importPathParts);
+                        Logging.Debug($"Resolving import constant: {importPath}", "Luauni:Parse:PP");
+                        bool first = true;
+                        object current = null;
+                        string last = "";
+                        foreach(string index in importPathParts)
+                        {
+                            last = index;
+                            if (first)
+                            {
+                                if (index == "script")
+                                {
+                                    current = src.gameObject;
+                                }
+                                else
+                                {
+                                    current = Globals.Get(index);
+                                }
+                                first = false;
+                            }
+                            else
+                            {
+                                if (current == null)
+                                {
+                                    break;
+                                }
+                                else
+                                {
+                                    Type t = Misc.SafeType(current);
+                                    if (t == typeof(Dictionary<string, object>))
+                                    {
+                                        Dictionary<string, object> arr = (Dictionary<string, object>)current;
+                                        current = arr[index];
+                                    }
+                                    else if (t == typeof(GameObject) || index == "camera")
+                                    {
+                                        GameObject obj = (GameObject)(t == typeof(GameObject) ? current : Misc.SafeGameObjectFromClass(current));
+                                        Transform find = obj.transform.Find(index);
+                                        if (find != null)
+                                        {
+                                            current = Misc.TryGetType(find);
+                                        }
+                                        else
+                                        {
+                                            Logging.Debug($"{index} is not a valid member of {t.Name}", "Luauni:Step"); current = null; break;
+                                        }
+                                    }
+                                    else
+                                    {
+                                        FieldInfo test = t.GetField(index, search);
+                                        Type test2 = t.GetNestedType(index, search);
+                                        MethodInfo test3 = t.GetMethod(index, search);
+                                        PropertyInfo test4 = t.GetProperty(index, search);
+                                        if (test != null)
+                                        {
+                                            object send = test.GetValue(current);
+                                            current = send;
+                                        }
+                                        else if (test2 != null)
+                                        {
+                                            current = test2;
+                                        }
+                                        else if (test3 != null)
+                                        {
+                                            current = (Globals.Standard)Delegate.CreateDelegate(typeof(Globals.Standard), test3.IsStatic ? null : current, test3);
+                                        }
+                                        else if (test4 != null)
+                                        {
+                                            object send = test4.GetValue(current);
+                                            current = send;
+                                        }
+                                        else
+                                        {
+                                            FieldInfo isObject = t.GetField("isObject");
+                                            if (isObject == null)
+                                            {
+                                                Logging.Debug($"Internal error: isObject not part of class {t.Name}", "Luauni:Step"); current = null; break;
+                                            }
+                                            bool indexable = (bool)isObject.GetValue(t);
+                                            if (indexable)
+                                            {
+                                                FieldInfo f1 = t.GetField("source", search);
+                                                GameObject obj;
+                                                if (f1 != null)
+                                                {
+                                                    obj = (GameObject)(f1.GetValue(current));
+                                                }
+                                                else
+                                                {
+                                                    obj = ((Component)current).gameObject;
+                                                }
+                                                Transform find = obj.transform.Find(index);
+                                                if (find != null)
+                                                {
+                                                    current = Misc.TryGetType(find);
+                                                }
+                                                else
+                                                {
+                                                    Logging.Debug($"{index} is not a valid member of {t.Name}", "Luauni:Step"); current = null; break;
+                                                }
+                                            }
+                                            else
+                                            {
+                                                Logging.Debug($"{index} is not a valid member of {t.Name}", "Luauni:Step"); current = null; break;
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        p.imports.Add(importPath, current);
+                        p.k[j] = current;
+                        //Logging.Print($"Resolved to: {current}", "Luauni:Parse:PP");
+                        break;
+                    }
                 case LuauBytecodeTag.LBC_CONSTANT_CLOSURE:
-                    Logging.Warn("Found unimplemented closure constant.", "Luauni:Parse:PP");
-                    //TODO: understand what the hell this is and don't skip
+                    //Logging.Warn("Found unimplemented closure constant.", "Luauni:Parse:PP");
                     int fid = br.ReadVariableLen();
-                    //that's it lol for now
+                    Closure newclosure = new Closure()
+                    {
+                        p = protos[fid],
+                        upvals = new object[protos[fid].nups],
+                        owner = owner
+                    };
+                    p.k[j] = newclosure;
                     break;
                 default:
                     Logging.Warn("Unknown bytecode tag " + read, "Luauni:Parse:PP");
