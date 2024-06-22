@@ -3,14 +3,39 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
-using System.Linq;
 using System.Reflection;
-using System.Xml.Linq;
-using Unity.VisualScripting;
-using UnityEditor.Searcher;
 using UnityEngine;
-using static UnityEngine.GraphicsBuffer;
-using static UnityEngine.Rendering.DebugUI;
+
+public class RegisterManager
+{
+    private object[] _registers;
+    public byte stacktop = 0;
+
+    public RegisterManager(int size)
+    {
+        _registers = new object[size];
+    }
+
+    public object this[long index]
+    {
+        get
+        {
+            if (index > stacktop)
+            {
+                stacktop = (byte)index;
+            }
+            return _registers[index];
+        }
+        set
+        {
+            _registers[index] = value;
+            if (index > stacktop)
+            {
+                stacktop = (byte)index;
+            }
+        }
+    }
+}
 
 public class Proto
 {
@@ -27,11 +52,14 @@ public class Proto
     public uint[] code;
     public uint[] codeentry;
     public Dictionary<string, object> imports;
-    public object[] k; // danger
-    public object?[] registers; // custom
+    public object[] k;
+    public RegisterManager registers;
     public uint callReg;
-    public int expectedReturns;
-    public object[] lastReturn;
+    public uint expectedReturns;
+    public byte stacktop
+    {
+        get { return registers.stacktop; }
+    }
     public object recentNameCalledRegister;
     public bool globalErrored = false;
 }
@@ -96,8 +124,8 @@ public class CallData
     public Proto initiator;
     public SClosure closure;
     public uint funcRegister;
-    public int args;
-    public int returns;
+    public uint args;
+    public uint returns;
 }
 
 public class TableIterator
@@ -236,37 +264,48 @@ public static class Luau
     }
     public static void returnToProto(ref CallData p, object[] args)
     {
-        int tern = p.returns == -1 ? args.Length : p.returns;
-        p.initiator.lastReturn = new object[tern];
-        for (int i = 0; i < tern; i++)
+        uint tern = p.returns == 0 ? (uint)args.Length : p.returns - 1;
+        for (uint i = 0; i < tern; i++)
         {
-            object tern2 = i < args.Length ? args[i] : null;
+            object tern2 = (i <= p.initiator.expectedReturns && i < args.Length) ? args[i] : null;
             p.initiator.registers[p.funcRegister + i] = tern2;
-            p.initiator.lastReturn[i] = tern2;
         }
     }
     public static object[] getAllArgs(ref CallData d)
     {
-        if (d.args != -1)
+        object[] buf = new object[(d.args != 0 ? d.args - 1 : d.initiator.stacktop - d.funcRegister)];
+        for (int i = 0; i < buf.Length; i++)
         {
-            object[] buf = new object[d.args];
-            for (int i = 0; i < d.args; i++)
-            {
-                buf[i] = d.initiator.registers[d.funcRegister + i + 1];
-            }
-            return buf;
-        } else
-        {
-            return d.initiator.lastReturn;
+            buf[i] = d.initiator.registers[d.funcRegister + i + 1];
         }
+        return buf;
     }
-    public static string accurate_tostring(object arg)
+    public static string accurate_tostring(object arg, bool quotes = false)
     {
         if (arg == null)
             return "nil";
         Type tp = arg.GetType();
         if (tp == typeof(bool))
             return (bool)arg ? "true" : "false";
+        if (tp == typeof(string))
+            return quotes ? '"'+(string)arg+'"' : (string)arg;
+        if (tp == typeof(object[]))
+        {
+            object[] col = (object[])arg;
+            string build = "{";
+            bool first = true;
+            foreach(object o in col)
+            {
+                if (!first)
+                {
+                    build += ", ";
+                }
+                build += accurate_tostring(o, true);
+                first = false;
+            }
+            build += "}";
+            return build;
+        }
         if (tp == typeof(double))
         {
             if (double.IsNaN((double)arg))
@@ -302,7 +341,7 @@ public static class ParseEssentials
         p.sizep = 0;
         p.flags = 0;
         p.codeentry = null;
-        p.registers = new object[256];
+        p.registers = new RegisterManager(256);
         p.imports = new Dictionary<string, object>();
         p.bytecodeid = i;
         p.maxstacksize = br.ReadByte();
@@ -370,7 +409,7 @@ public static class ParseEssentials
                             int index = (int)((aux >> (20 - shiftAmount)) & 1023);
                             if (index >= p.k.Length)
                             {
-                                Logging.Error($"Invalid constant index {index}.");
+                                Logging.Error($"Invalid constant index {index}.", "Luauni:Parse:PP");
                             }
                             else
                             {
@@ -421,7 +460,19 @@ public static class ParseEssentials
                                         }
                                         else
                                         {
-                                            Logging.Debug($"{index} is not a valid member of {t.Name}", "Luauni:Step"); current = null; break;
+                                            Logging.Debug($"{index} is not a valid member of {t.Name}", "Luauni:Parse:PP"); current = null; break;
+                                        }
+                                    }
+                                    else if (t == typeof(NamedDict))
+                                    {
+                                        NamedDict nd = (NamedDict)current;
+                                        if (nd.dict.TryGetValue(index, out object val))
+                                        {
+                                            current = val;
+                                        }
+                                        else
+                                        {
+                                            Logging.Debug($"{index} is not a valid member of {t.Name}", "Luauni:Parse:PP"); current = null; break;
                                         }
                                     }
                                     else
@@ -432,7 +483,7 @@ public static class ParseEssentials
                                         PropertyInfo test4 = t.GetProperty(index, search);
                                         if (test != null)
                                         {
-                                            object send = test.GetValue(current);
+                                            object send = test.GetValue(test.IsStatic ? null : current);
                                             current = send;
                                         }
                                         else if (test2 != null)
@@ -453,7 +504,7 @@ public static class ParseEssentials
                                             FieldInfo isObject = t.GetField("isObject");
                                             if (isObject == null)
                                             {
-                                                Logging.Debug($"Internal error: isObject not part of class {t.Name}", "Luauni:Step"); current = null; break;
+                                                Logging.Error($"Internal error: isObject not part of class {t.Name}", "Luauni:Parse:PP"); current = null; break;
                                             }
                                             bool indexable = (bool)isObject.GetValue(t);
                                             if (indexable)
@@ -475,17 +526,21 @@ public static class ParseEssentials
                                                 }
                                                 else
                                                 {
-                                                    Logging.Debug($"{index} is not a valid member of {t.Name}", "Luauni:Step"); current = null; break;
+                                                    Logging.Debug($"{index} is not a valid member of {t.Name}", "Luauni:Parse:PP"); current = null; break;
                                                 }
                                             }
                                             else
                                             {
-                                                Logging.Debug($"{index} is not a valid member of {t.Name}", "Luauni:Step"); current = null; break;
+                                                Logging.Debug($"{index} is not a valid member of {t.Name}", "Luauni:Parse:PP"); current = null; break;
                                             }
                                         }
                                     }
                                 }
                             }
+                        }
+                        if(current == null)
+                        {
+                            Logging.Warn("Could not resolve import path: " + importPath, "Luauni:Parse:PP");
                         }
                         p.imports.Add(importPath, current);
                         p.k[j] = current;

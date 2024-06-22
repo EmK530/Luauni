@@ -5,9 +5,6 @@
 
 using System;
 using System.Collections.Generic;
-using System.ComponentModel.Design;
-using System.Globalization;
-using System.IO;
 using System.Linq;
 using System.Reflection;
 using UnityEngine;
@@ -113,6 +110,7 @@ public static class GC
     {
         object[] inp = Luau.getAllArgs(ref dat);
         double delay = inp.Length != 0 ? (double)inp[0] : 0d;
+        Luau.returnToProto(ref dat, new object[1] { (double)Mathf.Max(1f / 30f, Convert.ToSingle(delay)) });
         dat.closure.yielded = true;
         dat.closure.type = YieldType.Hybrid;
         dat.closure.resumeAt = Time.realtimeSinceStartupAsDouble + delay;
@@ -150,6 +148,7 @@ public static class GC
             first = false;
         }
         UnityEngine.Debug.Log("[Bytecode] " + output);
+        Luau.returnToProto(ref dat, new object[0]);
         yield break;
     }
     public static System.Collections.IEnumerator warn(CallData dat)
@@ -167,6 +166,7 @@ public static class GC
             first = false;
         }
         UnityEngine.Debug.LogWarning("[Bytecode] " + output);
+        Luau.returnToProto(ref dat, new object[0]);
         yield break;
     }
     public static System.Collections.IEnumerator tick(CallData dat)
@@ -220,7 +220,12 @@ public static class GC
         //missing atan2
         //missing ceil
         //missing clamp
-        //missing cos
+        public static System.Collections.IEnumerator cos(CallData dat)
+        {
+            object[] inp = Luau.getAllArgs(ref dat);
+            Luau.returnToProto(ref dat, new object[1] { (double)Mathf.Cos(Convert.ToSingle(inp[0])) });
+            yield break;
+        }
         //missing deg
         //missing exp
         //missing floor
@@ -236,7 +241,12 @@ public static class GC
         //missing noise
         public static double pi = 3.1415926535897931;
         //missing pow
-        //missing rad
+        public static System.Collections.IEnumerator rad(CallData dat)
+        {
+            object[] inp = Luau.getAllArgs(ref dat);
+            Luau.returnToProto(ref dat, new object[1] {(double)inp[0] * (double)Mathf.Deg2Rad});
+            yield break;
+        }
         public static System.Collections.IEnumerator random(CallData dat)
         {
             object[] inp = Luau.getAllArgs(ref dat);
@@ -269,6 +279,7 @@ public static class GC
         {
             object[] inp = Luau.getAllArgs(ref dat);
             Luau.pcg32_seed(Convert.ToUInt64((double)inp[0]));
+            Luau.returnToProto(ref dat, new object[0]);
             yield break;
         }
         public static System.Collections.IEnumerator round(CallData dat)

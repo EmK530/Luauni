@@ -15,6 +15,7 @@ public class DataModel : MonoBehaviour
     public static string PrivateServerId = "";
     public static double PrivateServerOwnerId = 0;
     public static Workspace Workspace = Workspace.instance;
+    public static ContentProvider ContentProvider = ContentProvider.instance;
 
     public static IEnumerator GetService(CallData dat)
     {
@@ -24,7 +25,7 @@ public class DataModel : MonoBehaviour
         {
             dat.initiator.globalErrored = true; Logging.Error($"'{key}' is not a valid Service name", "DataModel:GetService"); yield break;
         }
-        Luau.returnToProto(ref dat, new object[1] { Services.List[key].GetType() });
+        Luau.returnToProto(ref dat, new object[1] { Services.List[key] });
         yield break;
     }
 
@@ -37,6 +38,8 @@ public class DataModel : MonoBehaviour
         {
             instance = this;
             source = gameObject;
+            Workspace = Workspace.instance;
+            ContentProvider = ContentProvider.instance;
         }
         else
         {

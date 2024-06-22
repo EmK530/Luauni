@@ -1,3 +1,4 @@
+using System;
 using System.Collections;
 using UnityEngine;
 
@@ -33,6 +34,18 @@ public class Sound : MonoBehaviour
         set
         {
             SetSoundId(value);
+        }
+    }
+
+    [SerializeField]
+    private double _volume;
+    public double Volume
+    {
+        get { return _volume; }
+        set
+        {
+            GetComponent<AudioSource>().volume = (float)value;
+            _volume = value;
         }
     }
 

@@ -1,6 +1,7 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Drawing.Text;
 using System.Text.RegularExpressions;
 using UnityEngine;
 
@@ -35,17 +36,21 @@ public static class String
     public static IEnumerator sub(CallData dat)
     {
         object[] inp = Luau.getAllArgs(ref dat);
+        string ret = "";
         switch(inp.Length)
         {
             case 1:
-                Luau.returnToProto(ref dat, new object[1] { ((string)inp[0]).Substring(1) });
+                try { ret = ((string)inp[0]).Substring(1); } catch (Exception e) {Logging.Warn("sub err: " +  e.Message);}
+                Luau.returnToProto(ref dat, new object[1] { ret });
                 break;
             case 2:
-                Luau.returnToProto(ref dat, new object[1] { ((string)inp[0]).Substring(Convert.ToInt32(inp[1])) });
+                try { ret = ((string)inp[0]).Substring(Convert.ToInt32(inp[1])); } catch (Exception e) {Logging.Warn("sub err: " +  e.Message);}
+                Luau.returnToProto(ref dat, new object[1] { ret });
                 break;
             default:
                 int v1 = Convert.ToInt32(inp[1]);
-                Luau.returnToProto(ref dat, new object[1] { ((string)inp[0]).Substring(v1, Convert.ToInt32(inp[2])-v1) });
+                try { ret = ((string)inp[0]).Substring(v1, Convert.ToInt32(inp[2])-v1+1); } catch (Exception e) {Logging.Warn("sub err: " +  e.Message);}
+                Luau.returnToProto(ref dat, new object[1] { ret });
                 break;
         }
         yield break;

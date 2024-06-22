@@ -12,5 +12,6 @@ public static class Services
         ["GuiService"] = GuiService.instance,
         ["ContextActionService"] = ContextActionService.instance,
         ["RunService"] = RunService.instance,
+        ["ContentProvider"] = ContentProvider.instance,
     };
 }
