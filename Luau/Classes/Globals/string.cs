@@ -48,8 +48,10 @@ public static class String
                 Luau.returnToProto(ref dat, new object[1] { ret });
                 break;
             default:
-                int v1 = Convert.ToInt32(inp[1]);
-                try { ret = ((string)inp[0]).Substring(v1, Convert.ToInt32(inp[2])-v1+1); } catch (Exception e) {Logging.Warn("sub err: " +  e.Message);}
+                string substring = ((string)inp[0]);
+                int v1 = Convert.ToInt32(inp[1]) - 1;
+                int v2 = Math.Min(Convert.ToInt32(inp[2]) - v1, substring.Length-v1);
+                try { ret = substring.Substring(v1, v2); } catch {Logging.Warn($"sub err: '{(string)inp[0]}', {Convert.ToInt32(inp[1])}, {Convert.ToInt32(inp[2])} | {v1}, {v2}");}
                 Luau.returnToProto(ref dat, new object[1] { ret });
                 break;
         }

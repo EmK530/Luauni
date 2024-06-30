@@ -36,6 +36,7 @@ public static class Globals
         list["CFrame"] = typeof(CoordinateFrame);
         list["UDim2"] = typeof(UDim2);
         list["string"] = typeof(String);
+        list["math"] = typeof(math);
         initialized = true;
     }
 
@@ -110,10 +111,13 @@ public static class GC
     {
         object[] inp = Luau.getAllArgs(ref dat);
         double delay = inp.Length != 0 ? (double)inp[0] : 0d;
+        /*
         Luau.returnToProto(ref dat, new object[1] { (double)Mathf.Max(1f / 30f, Convert.ToSingle(delay)) });
         dat.closure.yielded = true;
         dat.closure.type = YieldType.Hybrid;
         dat.closure.resumeAt = Time.realtimeSinceStartupAsDouble + delay;
+        */
+        Misc.YieldClosure(ref dat.closure, YieldType.Hybrid, delay, ref dat);
         yield break;
     }
     public static System.Collections.IEnumerator spawn(CallData dat)
@@ -126,7 +130,7 @@ public static class GC
             {
                 misc[i] = inp[i + 1];
             }
-            Misc.SummonClosure(cl, misc);
+            Misc.SummonClosureHybrid(cl, misc);
         } else
         {
             Logging.Error($"Internal error: Cannot spawn type {inp[0]}", "Luauni:Globals:spawn"); dat.initiator.globalErrored = true; yield break;
@@ -211,98 +215,4 @@ public static class GC
         yield break;
     }
     public static Dictionary<string, object> _G = new Dictionary<string, object>();
-    public static class math
-    {
-        //missing abs
-        //missing acos
-        //missing asin
-        //missing atan
-        //missing atan2
-        //missing ceil
-        //missing clamp
-        public static System.Collections.IEnumerator cos(CallData dat)
-        {
-            object[] inp = Luau.getAllArgs(ref dat);
-            Luau.returnToProto(ref dat, new object[1] { (double)Mathf.Cos(Convert.ToSingle(inp[0])) });
-            yield break;
-        }
-        //missing deg
-        //missing exp
-        //missing floor
-        //missing fmod
-        //missing frexp
-        public static double huge = double.PositiveInfinity;
-        //missing ldexp
-        //missing log
-        //missing log10
-        //missing max
-        //missing min
-        //missing modf
-        //missing noise
-        public static double pi = 3.1415926535897931;
-        //missing pow
-        public static System.Collections.IEnumerator rad(CallData dat)
-        {
-            object[] inp = Luau.getAllArgs(ref dat);
-            Luau.returnToProto(ref dat, new object[1] {(double)inp[0] * (double)Mathf.Deg2Rad});
-            yield break;
-        }
-        public static System.Collections.IEnumerator random(CallData dat)
-        {
-            object[] inp = Luau.getAllArgs(ref dat);
-            switch (dat.args)
-            {
-                case 0:
-                    {
-                        Luau.returnToProto(ref dat, new object[1] { NMath.ldexp(Luau.pcg32_random() | ((ulong)Luau.pcg32_random() << 32), -64) });
-                        yield break;
-                    }
-                case 1:
-                    {
-                        Luau.returnToProto(ref dat, new object[1] { (double)(1 + ((Convert.ToUInt64(inp[0]) * Luau.pcg32_random()) >> 32)) });
-                        yield break;
-                    }
-                case 2:
-                    {
-                        int l = Convert.ToInt32((double)inp[0]);
-                        int u = Convert.ToInt32((double)inp[1]);
-                        Luau.returnToProto(ref dat, new object[1] { (double)(l + (int)((((uint)u - (uint)l + 1UL) * Luau.pcg32_random()) >> 32)) });
-                        yield break;
-                    }
-                default:
-                    Logging.Error("Unsupported number of parameters! Returning 0.", "Globals:math.random");
-                    Luau.returnToProto(ref dat, new object[1] { 0d });
-                    yield break;
-            }
-        }
-        public static System.Collections.IEnumerator randomseed(CallData dat)
-        {
-            object[] inp = Luau.getAllArgs(ref dat);
-            Luau.pcg32_seed(Convert.ToUInt64((double)inp[0]));
-            Luau.returnToProto(ref dat, new object[0]);
-            yield break;
-        }
-        public static System.Collections.IEnumerator round(CallData dat)
-        {
-            object[] inp = Luau.getAllArgs(ref dat);
-            Luau.returnToProto(ref dat, new object[1] { Math.Round(Luau.safeNum(inp[0])) });
-            yield break;
-        }
-        //missing sign
-        //missing sin
-        //missing sinh
-        public static System.Collections.IEnumerator sqrt(CallData dat)
-        {
-            object[] inp = Luau.getAllArgs(ref dat);
-            Luau.returnToProto(ref dat, new object[1] { Math.Sqrt(Luau.safeNum(inp[0])) });
-            yield break;
-        }
-        public static System.Collections.IEnumerator tan(CallData dat)
-        {
-            object[] inp = Luau.getAllArgs(ref dat);
-            Luau.returnToProto(ref dat, new object[1] { Math.Tan(Luau.safeNum(inp[0])) });
-            yield break;
-        }
-        //missing tanh
-    }
 }

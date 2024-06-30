@@ -6,6 +6,8 @@ public class Mouse : MonoBehaviour
 {
     public static Mouse instance;
 
+    public static double _multiplier = 1d; // do not access in luau
+
     public static double X;
     public static double Y;
 
@@ -36,7 +38,7 @@ public class Mouse : MonoBehaviour
 
     void Update()
     {
-        X = Input.mousePosition.x;
-        Y = Screen.height - Input.mousePosition.y;
+        X = Input.mousePosition.x / _multiplier;
+        Y = (Screen.height - Input.mousePosition.y) / _multiplier;
     }
 }

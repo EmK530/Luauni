@@ -14,6 +14,7 @@ public class StarterGui : MonoBehaviour
         if (instance == null)
         {
             instance = this;
+            GetComponent<Canvas>().enabled = false;
         }
         else
         {

@@ -23,32 +23,30 @@ public class Luauni : MonoBehaviour
 
     bool printed = false;
 
-    string[] validExecutionSpots = new string[] {"LocalPlayer","Backpack","PlayerGui","PlayerScripts"};
+    static BindingFlags search = BindingFlags.Instance | BindingFlags.Static | BindingFlags.Public;
 
-    BindingFlags search = BindingFlags.Instance | BindingFlags.Static | BindingFlags.Public;
-
-    private bool[] config = new bool[]
+    private static bool[] config = new bool[]
     {
-        false, false
+        false
     };
 
     void Start()
     {
-        Dictionary<string, bool> cfg = new Dictionary<string, bool>()
+        Dictionary<string, object> cfg = new Dictionary<string, object>()
         {
-            ["debugGlobals"] = false,
             ["yieldPerInstruction"] = false,
-            ["logEmulationDebug"] = false
+            ["logEmulationDebug"] = false,
+            ["allowSystemService"] = false
         };
         if (!File.Exists("config.json"))
         {
             File.WriteAllText("config.json",JsonConvert.SerializeObject(cfg, Formatting.Indented));
         } else
         {
-            Dictionary<string, bool> cfg2 = JsonConvert.DeserializeObject<Dictionary<string, bool>>(File.ReadAllText("config.json"));
+            Dictionary<string, object> cfg2 = JsonConvert.DeserializeObject<Dictionary<string, object>>(File.ReadAllText("config.json"));
             foreach(string i in cfg.Keys.ToArray<string>())
             {
-                bool value = false;
+                object value = null;
                 if (!cfg2.TryGetValue(i, out value))
                 {
                     value = cfg[i];
@@ -56,17 +54,23 @@ public class Luauni : MonoBehaviour
                 {
                     cfg[i] = value;
                 }
-                switch(i)
+                if (value != null)
                 {
-                    case "debugGlobals":
-                        config[0] = value;
-                        break;
-                    case "yieldPerInstruction":
-                        config[1] = value;
-                        break;
-                    case "logEmulationDebug":
-                        Logging.ShowDebug = value;
-                        break;
+                    switch (i)
+                    {
+                        case "yieldPerInstruction":
+                            config[0] = (bool)value;
+                            break;
+                        case "logEmulationDebug":
+                            Logging.ShowDebug = (bool)value;
+                            break;
+                        case "allowSystemService":
+                            if ((bool)value)
+                            {
+                                SystemService.Windows = new WindowsFunctions();
+                            }
+                            break;
+                    }
                 }
             }
             File.WriteAllText("config.json", JsonConvert.SerializeObject(cfg, Formatting.Indented));
@@ -156,40 +160,10 @@ public class Luauni : MonoBehaviour
 
     void Update()
     {
-        string gen = $"\n\n{targetScript}:Main:{((main.complete) ? " (DEAD)" : "")}";
+        string gen = $"\n\n{targetScript} {(main.complete ? "(DEAD)" : (main.yielded ? "(YIELDED)" : ""))}";
         for(int i = 0; i < main.pL.Count; i++)
         {
             gen+=$"\nLayer {i + 1}: Proto {main.pL[i].bytecodeid}, Position: {main.iP[i] + 1} / {main.pL[i].sizecode}";
-        }
-        for (int i = 0; i < delayed.Count; i++)
-        {
-            gen += $"\nThread-{i + 1}:";
-            for (int j = 0; j < delayed[i].pL.Count; j++)
-            {
-                gen += $"\nLayer {j + 1}: Proto {delayed[i].pL[j].bytecodeid}, Position: {delayed[i].iP[j] + 1} / {delayed[i].pL[j].sizecode}";
-            }
-        }
-        if (config[0])
-        {
-            gen += "\nWritten globals (excl functions):";
-            foreach (string s in watchGlobals)
-            {
-                if (Globals.list.TryGetValue(s, out object obj))
-                {
-                    if (obj != null)
-                    {
-                        Type t = obj.GetType();
-                        if (t != typeof(Closure))
-                        {
-                            gen += $"\n{s} = {Misc.GetTypeName(obj)}";
-                        }
-                    }
-                    else
-                    {
-                        gen += $"\n{s} = nil";
-                    }
-                }
-            }
         }
         if (!DebugText.scriptInfo.ContainsKey(targetScript)){
             DebugText.scriptInfo.Add(targetScript, gen);
@@ -197,9 +171,9 @@ public class Luauni : MonoBehaviour
         {
             DebugText.scriptInfo[targetScript] = gen;
         }
-        if (!ready && !printed)
+        if (main.complete && !printed)
         {
-            Logging.Warn($"Proto {mainProtoId} emulated progress: {main.iP[0] + 1} instructions / {protos[mainProtoId].sizecode} instructions.");
+            Logging.Warn($"{targetScript} - Proto {mainProtoId} emulated progress: {main.iP[0] + 1} instructions / {protos[mainProtoId].sizecode} instructions.");
             printed = true;
         }
     }
@@ -282,58 +256,13 @@ public class Luauni : MonoBehaviour
         main.iP.Add(-1);
         ready = true;
         Logging.Print("Bytecode loaded for "+targetScript+", ready for execution.", "Luauni:Parse");
-        StartCoroutine(ExecHandler());
+        TaskScheduler.instance.InitiateScript(ref main);
     }
 
     private Closure maincl;
     public SClosure main;
-    public List<SClosure> delayed = new List<SClosure>();
-    public Closure lCC;
 
-    bool hybridLoop = false;
-    float timeSinceHybrid = 0f;
-    float constant = 1 / 30f;
-
-    public System.Collections.IEnumerator ExecHandler()
-    {
-        while (true)
-        {
-            timeSinceHybrid += Time.deltaTime;
-            if(timeSinceHybrid >= constant)
-            {
-                hybridLoop = true;
-                timeSinceHybrid -= constant;
-            } else
-            {
-                hybridLoop = false;
-            }
-            SClosure[] run = delayed.ToArray();
-            delayed.Clear();
-            foreach (SClosure s in run)
-            {
-                if (!s.yielded || ((s.type == YieldType.Any || hybridLoop) && Time.realtimeSinceStartupAsDouble >= s.resumeAt))
-                {
-                    yield return Misc.ExecuteCoroutine(Execute(s));
-                }
-            }
-            if (!main.complete && (!main.yielded || ((main.type == YieldType.Any || hybridLoop) && Time.realtimeSinceStartupAsDouble >= main.resumeAt)))
-            {
-                yield return Misc.ExecuteCoroutine(Execute(main));
-            }
-            List<SClosure> noncleared = delayed;
-            foreach(SClosure s in run)
-            {
-                if (!s.complete)
-                {
-                    noncleared.Add(s);
-                }
-            }
-            delayed = noncleared;
-            yield return null;
-        }
-    }
-
-    public bool ReflectionIndex(string key, ref SClosure target, uint inst)
+    public static bool ReflectionIndex(string key, ref SClosure target, uint inst)
     {
         object tgt = target.pL[target.cEL].registers[Luau.INSN_B(inst)];
         Type t = Misc.SafeType(tgt);
@@ -386,18 +315,18 @@ public class Luauni : MonoBehaviour
                 }
                 else
                 {
-                    Logging.Error($"{key} is not a valid member of {t.Name}", "Luauni:Step"); return false;
+                    Logging.Error($"{key} is not a valid member of {tgt}", "Luauni:Step"); return false;
                 }
             }
             else
             {
-                Logging.Error($"{key} is not a valid member of {t.Name}", "Luauni:Step"); return false;
+                Logging.Error($"{key} is not a valid member of {tgt}", "Luauni:Step"); return false;
             }
         }
         return true;
     }
 
-    public System.Collections.IEnumerator Execute(SClosure target)
+    public static System.Collections.IEnumerator Execute(SClosure target)
     {
         target.yielded = false;
         if (!target.initiated)
@@ -432,9 +361,18 @@ public class Luauni : MonoBehaviour
                 case LuauOpcode.LOP_ADD:
                     {
                         uint b = Luau.INSN_B(inst);
-                        double rg1 = (double)currentProto.registers[Luau.INSN_B(inst)];
-                        double rg2 = (double)currentProto.registers[Luau.INSN_C(inst)];
-                        currentProto.registers[Luau.INSN_A(inst)] = rg1 + rg2;
+                        object rg1 = currentProto.registers[Luau.INSN_B(inst)];
+                        object rg2 = currentProto.registers[Luau.INSN_C(inst)];
+                        if (rg1 == null || rg2 == null)
+                        {
+                            Logging.Error($"attempt to perform arithmetic (add) on {Misc.GetTypeName(rg1)} and {Misc.GetTypeName(rg2)}", "Luauni:Step");
+                            target.complete = true;
+                            yield break;
+                        }
+                        else
+                        {
+                            currentProto.registers[Luau.INSN_A(inst)] = (double)rg1 + (double)rg2;
+                        }
                     }
                     break;
                 case LuauOpcode.LOP_ADDK:
@@ -492,9 +430,9 @@ public class Luauni : MonoBehaviour
                             {
                                 args--;
                             }
-                            for (int i = 0; i < args; i++)
+                            for (int i = 0; i < pr.maxstacksize; i++)
                             {
-                                pr.registers[i] = currentProto.registers[reg + i + 1];
+                                pr.registers[i] = i < args ? currentProto.registers[reg + i + 1] : null;
                             }
                             target.pL.Add(pr);
                             target.iP.Add(-1);
@@ -510,23 +448,23 @@ public class Luauni : MonoBehaviour
                 case LuauOpcode.LOP_CAPTURE:
                     {
                         LuauCaptureType cap = (LuauCaptureType)Luau.INSN_A(inst);
-                        if(lCC.loadedUps >= lCC.p.nups)
+                        if(target.lCC.loadedUps >= target.lCC.p.nups)
                         {
                             Logging.Error($"Cannot CAPTURE upvalue because nups limit has been exceeded for the proto.", "Luauni:Step"); target.complete = true; yield break;
                         }
                         Logging.Debug($"Capturing upvalue of type {cap}", "Luauni:Step");
                         if(cap == LuauCaptureType.LCT_VAL)
                         {
-                            lCC.upvals[lCC.loadedUps] = currentProto.registers[Luau.INSN_B(inst)];
+                            target.lCC.upvals[target.lCC.loadedUps] = currentProto.registers[Luau.INSN_B(inst)];
                         } else
                         {
-                            lCC.upvals[lCC.loadedUps] = new UpvalREF()
+                            target.lCC.upvals[target.lCC.loadedUps] = new UpvalREF()
                             {
                                 src = currentProto,
                                 register = Luau.INSN_B(inst)
                             };
                         }
-                        lCC.loadedUps++;
+                        target.lCC.loadedUps++;
                         break;
                     }
                 case LuauOpcode.LOP_CONCAT:
@@ -536,7 +474,8 @@ public class Luauni : MonoBehaviour
                         uint regEnd = Luau.INSN_C(inst);
                         for (int i = 0; i < regEnd - regStart + 1; i++)
                         {
-                            output += currentProto.registers[regStart + i].ToString();
+                            object reg = currentProto.registers[regStart + i];
+                            output += reg == null ? "null" : Luau.accurate_tostring(reg);
                         }
                         currentProto.registers[Luau.INSN_A(inst)] = output;
                     }
@@ -557,8 +496,8 @@ public class Luauni : MonoBehaviour
                     break;
                 case LuauOpcode.LOP_DUPCLOSURE:
                     {
-                        lCC = (Closure)currentProto.k[Luau.INSN_D(inst)];
-                        currentProto.registers[Luau.INSN_A(inst)] = lCC;
+                        target.lCC = (Closure)currentProto.k[Luau.INSN_D(inst)];
+                        currentProto.registers[Luau.INSN_A(inst)] = target.lCC;
                         break;
                     }
                 case LuauOpcode.LOP_DUPTABLE:
@@ -628,7 +567,7 @@ public class Luauni : MonoBehaviour
                         string key = (string)currentProto.k[target.nextInst()];
                         if (key == "script")
                         {
-                            currentProto.registers[Luau.INSN_A(inst)] = gameObject;
+                            currentProto.registers[Luau.INSN_A(inst)] = target.source.owner.gameObject;
                         }
                         else
                         {
@@ -995,12 +934,12 @@ public class Luauni : MonoBehaviour
                         break;
                     }
                 case LuauOpcode.LOP_NEWCLOSURE:
-                    lCC = new Closure() {
+                   target. lCC = new Closure() {
                         p = currentProto.p[Luau.INSN_D(inst)],
                         upvals = new object[currentProto.p[Luau.INSN_D(inst)].nups],
-                        owner = this
+                        owner = target.source.owner
                     };
-                    currentProto.registers[Luau.INSN_A(inst)] = lCC;
+                    currentProto.registers[Luau.INSN_A(inst)] = target.lCC;
                     break;
                 case LuauOpcode.LOP_NEWTABLE:
                     currentProto.registers[Luau.INSN_A(inst)] = new object[target.nextInst()];
@@ -1058,13 +997,6 @@ public class Luauni : MonoBehaviour
                 case LuauOpcode.LOP_SETGLOBAL:
                     {
                         string key = (string)currentProto.k[target.nextInst()];
-                        if (config[0])
-                        {
-                            if (!watchGlobals.Contains(key))
-                            {
-                                watchGlobals.Add(key);
-                            }
-                        }
                         Globals.Set(key, currentProto.registers[Luau.INSN_A(inst)]);
                     }
                     break;
@@ -1226,7 +1158,7 @@ public class Luauni : MonoBehaviour
                 default:
                     Logging.Error($"Unsupported opcode: {opcode}", "Luauni:Step"); target.complete = true; yield break;
             }
-            if (config[1])
+            if (config[0])
             {
                 yield return null;
             }

@@ -8,6 +8,7 @@ public class RBXScriptConnection
 
     public bool Once = false;
     public Closure Connection = null;
+    public CallData Data;
 
     public IEnumerator Disconnect(CallData dat)
     {
@@ -17,10 +18,11 @@ public class RBXScriptConnection
         yield break;
     }
 
-    public RBXScriptConnection(Closure connection, bool once)
+    public RBXScriptConnection(Closure connection, bool once, ref CallData dat)
     {
         Connection = connection;
         Once = once;
+        Data = dat;
     }
 
     public static bool isObject = false;

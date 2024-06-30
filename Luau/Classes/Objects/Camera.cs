@@ -1,11 +1,13 @@
+using System;
 using System.Collections;
 using UnityEngine;
-using static Unity.VisualScripting.Member;
 
 public class Camera : MonoBehaviour
 {
     public readonly string ClassName = "Camera";
     public string CameraType = "Scriptable";
+
+    public UnityEngine.Camera component;
 
     public string Name
     {
@@ -13,6 +15,15 @@ public class Camera : MonoBehaviour
         set
         {
             name = value;
+        }
+    }
+
+    public double FieldOfView
+    {
+        get { return component.fieldOfView; }
+        set
+        {
+            component.fieldOfView = Convert.ToSingle(value);
         }
     }
 
@@ -38,6 +49,7 @@ public class Camera : MonoBehaviour
         {
             instance = this;
             source = gameObject;
+            component = gameObject.GetComponent<UnityEngine.Camera>();
             _cframe = new CoordinateFrame(transform.position, transform.rotation);
         }
         else

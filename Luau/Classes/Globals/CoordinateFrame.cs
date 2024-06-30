@@ -33,8 +33,14 @@ public class CoordinateFrame
         object[] inp = Luau.getAllArgs(ref dat);
         switch (inp.Length)
         {
+            case 0:
+                Luau.returnToProto(ref dat, new object[1] { new CoordinateFrame(0, 0, 0) });
+                break;
             case 3:
                 Luau.returnToProto(ref dat, new object[1] { new CoordinateFrame(Convert.ToSingle(inp[0]), Convert.ToSingle(inp[1]), Convert.ToSingle(inp[2])) });
+                break;
+            default:
+                Logging.Error("Unsupported number of CFrame.new arguments: " + inp.Length);
                 break;
         }
         yield break;

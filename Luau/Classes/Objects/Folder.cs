@@ -30,6 +30,9 @@ public class Folder : MonoBehaviour
         yield break;
     }
 
+    public RBXScriptSignal ChildAdded = new RBXScriptSignal();
+    public RBXScriptSignal ChildRemoved = new RBXScriptSignal();
+
     public static bool isObject = true;
     
     void Start()

@@ -4,6 +4,10 @@ using UnityEngine;
 
 public class Workspace : MonoBehaviour
 {
+    public static double DistributedGameTime
+    {
+        get { return Time.realtimeSinceStartupAsDouble; }
+    }
     private static double _gravity = 196.2;
     public static double Gravity
     {

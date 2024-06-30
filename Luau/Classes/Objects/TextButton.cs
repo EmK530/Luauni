@@ -29,8 +29,8 @@ public class TextButton : MonoBehaviour, IPointerEnterHandler, IPointerClickHand
     public RBXScriptSignal MouseEnter = new RBXScriptSignal();
     public RBXScriptSignal MouseLeave = new RBXScriptSignal();
 
-    public void OnPointerEnter(PointerEventData eventData) { MouseEnter._fire(new object[0]); }
-    public void OnPointerClick(PointerEventData eventData) { MouseButton1Click._fire(new object[0]); }
+    public void OnPointerEnter(PointerEventData eventData) { StartCoroutine(Misc.ExecuteCoroutine(MouseEnter._fire(new object[0]))); }
+    public void OnPointerClick(PointerEventData eventData) { StartCoroutine(Misc.ExecuteCoroutine(MouseButton1Click._fire(new object[0]))); }
 
     [SerializeField]
     private bool _visible = true;

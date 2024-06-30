@@ -38,6 +38,7 @@ public class BillboardGui : MonoBehaviour
         {
             if(cv == null) { cv = GetComponent<Canvas>(); }
             cv.enabled = value;
+            gameObject.SetActive(value);
         }
     }
 

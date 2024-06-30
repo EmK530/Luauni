@@ -17,6 +17,7 @@ public class Part : MonoBehaviour
     }
 
     private MeshRenderer mr;
+    private Rigidbody rb;
 
     public Color3 BrickColor
     {
@@ -66,6 +67,18 @@ public class Part : MonoBehaviour
         }
     }
 
+    [SerializeField]
+    private bool _anchored = true;
+    public bool Anchored
+    {
+        get { if (rb == null) { rb = gameObject.GetComponent<Rigidbody>(); } return rb.isKinematic; }
+        set
+        {
+            if (rb == null) { rb = gameObject.GetComponent<Rigidbody>(); }
+            rb.isKinematic = false;
+        }
+    }
+
     public RBXScriptSignal Touched = new RBXScriptSignal();
 
     public static bool isObject = true;
@@ -102,6 +115,12 @@ public class Part : MonoBehaviour
             _mat.SetColor("_BaseColor", _color);
             _lastColor = _color;
         }
+        rb = GetComponent<Rigidbody>();
+        if(rb == null)
+        {
+            rb = gameObject.AddComponent<Rigidbody>();
+        }
+        rb.isKinematic = _anchored;
     }
     void Update()
     {

@@ -66,13 +66,15 @@ public class Proto
 
 public enum YieldType
 {
-    Any = 0,
-    Hybrid = 1
+    WaitingForSignal = 0,
+    Hybrid = 1,
+    Task = 2
 }
 
 public class SClosure
 {
     public Closure source;
+    public Closure lCC;
     public int cEL = 0;
     public List<int> iP = new List<int>();
     public List<Proto> pL = new List<Proto>();
@@ -83,7 +85,9 @@ public class SClosure
 
     public bool yielded = false;
     public YieldType type;
-    public double resumeAt = Time.realtimeSinceStartupAsDouble;
+    public double yieldStart = 0;
+    public double resumeAt = 0;
+    public CallData yieldReturnTo;
 
     public uint nextInst()
     {
@@ -579,7 +583,9 @@ public static class Misc
         while (stack.Count > 0)
         {
             var current = stack.Peek();
-            if (current.MoveNext())
+            bool moveNext = current.MoveNext();
+
+            if (moveNext)
             {
                 if (current.Current is IEnumerator next)
                 {
@@ -596,7 +602,8 @@ public static class Misc
             }
         }
     }
-    public static void SummonClosure(Closure cl, object[] args)
+
+    public static IEnumerator SummonClosure(Closure cl, object[] args)
     {
         SClosure create = new SClosure()
         {
@@ -606,16 +613,61 @@ public static class Misc
         create.iP.Add(-1);
         create.pL.Add(cl.p);
         create.cL.Add(null);
-        cl.owner.delayed.Add(create);
+        yield return ExecuteCoroutine(TaskScheduler.instance.Spawn(create));
+        yield break;
+    }
+    public static void SummonClosureHybrid(Closure cl, object[] args)
+    {
+        SClosure create = new SClosure()
+        {
+            source = cl,
+            args = args
+        };
+        create.iP.Add(-1);
+        create.pL.Add(cl.p);
+        create.cL.Add(null);
+        TaskScheduler.instance.SpawnHybrid(create);
+    }
+    public static void SummonClosureTask(Closure cl, object[] args)
+    {
+        SClosure create = new SClosure()
+        {
+            source = cl,
+            args = args
+        };
+        create.iP.Add(-1);
+        create.pL.Add(cl.p);
+        create.cL.Add(null);
+        TaskScheduler.instance.SpawnTask(create);
+    }
+    public static void YieldClosure(ref SClosure closure, YieldType type, double duration, ref CallData returns)
+    {
+        closure.yielded = true;
+        closure.type = type;
+        closure.yieldStart = Time.realtimeSinceStartupAsDouble;
+        closure.resumeAt = Time.realtimeSinceStartupAsDouble + duration;
+        closure.yieldReturnTo = returns;
+    }
+    public static void YieldClosureForever(ref SClosure closure, double duration, ref CallData returns)
+    {
+        closure.yielded = true;
+        closure.type = YieldType.WaitingForSignal;
+        closure.yieldStart = Time.realtimeSinceStartupAsDouble;
+        closure.resumeAt = Time.realtimeSinceStartupAsDouble + duration;
+        closure.yieldReturnTo = returns;
     }
     public static string GetTypeName(object value)
     {
+        if(value == null)
+        {
+            return "nil";
+        }
         Type t = value.GetType();
         if(t == typeof(object[]) || t == typeof(NamedDict) || t == typeof(Dictionary<string, object>))
         {
             return "table";
         }
-        return value.ToString();
+        return t.ToString();
     }
     public static object TryGetType(Transform v2)
     {

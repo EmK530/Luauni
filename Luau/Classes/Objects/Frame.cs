@@ -38,7 +38,7 @@ public class Frame : MonoBehaviour
         set
         {
             _backgroundTransparency = value;
-            img.color = new Color(img.color.r, img.color.g, img.color.b, 1/(float)value);
+            img.color = new Color(img.color.r, img.color.g, img.color.b, 1-(float)value);
         }
     }
 
