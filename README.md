@@ -1,6 +1,9 @@
 # Luauni
 A Luau bytecode interpreter programmed with the intention of being used for a Unity port of a Roblox game.
 
+## Notice
+<b>This branch is the old version before it was ported to Unity, for up-to-date code [click here!](https://github.com/EmK530/Luauni/tree/unity)</b>
+
 ## Requirements
 <b>luau-compile.exe with Luau Version 5 and Type Version 1</b><br>
 This is what Luauni is being designed for and while it allows other versions, it may cause issues.
@@ -58,12 +61,3 @@ If there is an ❌ then if it is encountered Luauni will stop execution.<br>
 ❌ `LOP_SUBRK` `LOP_DIVRK`<br>
 ❌ `LOP_JUMPXEQKNIL` `LOP_JUMPXEQKB` `LOP_JUMPXEQKN` `LOP_JUMPXEQKS`<br>
 ❌ `LOP_IDIV` `LOP_IDIVK`<br>
-
-## Implemented Globals
-<b>`math`</b> - 20.6% (7/34)<br>
-### Topmost Functions
-`print`<br>
-`warn`<br>
-`tostring`<br>
-`tonumber`<br>
-`pairs`<br>
