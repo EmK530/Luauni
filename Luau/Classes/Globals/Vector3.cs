@@ -36,6 +36,16 @@ public class Vector3
         return new Vector3(a.X * k, a.Y * k, a.Z * k);
     }
 
+    public static Vector3 operator *(double k, Vector3 a)
+    {
+        return new Vector3(a.X * k, a.Y * k, a.Z * k);
+    }
+
+    public static Vector3 operator *(Vector3 a, double k)
+    {
+        return new Vector3(a.X * k, a.Y * k, a.Z * k);
+    }
+
     public static Vector3 operator /(Vector3 a, float k)
     {
         return new Vector3(a.X / k, a.Y / k, a.Z / k);
@@ -81,6 +91,11 @@ public class Vector3
     public static Vector3 operator /(Vector3 a, Vector3 b)
     {
         return new Vector3(a.X / b.X, a.Y / b.Y, a.Z / b.Z);
+    }
+
+    public static Vector3 operator /(Vector3 a, double b)
+    {
+        return new Vector3(a.X / b, a.Y / b, a.Z / b);
     }
 
     public static implicit operator UnityEngine.Vector3(Vector3 v)
@@ -129,6 +144,10 @@ public class Vector3
     // methods
 
     public Vector3 Lerp(Vector3 b, float t)
+    {
+        return (1 - t) * this + t * b;
+    }
+    public Vector3 Lerp(Vector3 b, double t)
     {
         return (1 - t) * this + t * b;
     }

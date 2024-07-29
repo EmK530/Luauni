@@ -16,6 +16,8 @@ public class UserInputService : MonoBehaviour
         }
     }
 
+    public static bool TouchEnabled = false;
+
     public static RBXScriptSignal InputBegan = new RBXScriptSignal();
     public static RBXScriptSignal InputEnded = new RBXScriptSignal();
     public static RBXScriptSignal InputChanged = new RBXScriptSignal();

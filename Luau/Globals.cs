@@ -11,7 +11,21 @@ using UnityEngine;
 
 public static class Globals
 {
-    public static Dictionary<string, object> list = new Dictionary<string, object>();
+    public static Dictionary<string, object> list = new Dictionary<string, object>()
+    {
+        ["game"] = DataModel.instance.GetType(),
+        ["workspace"] = Workspace.instance.GetType(),
+        ["Enum"] = typeof(Enum),
+        ["Vector2"] = typeof(Vector2),
+        ["Vector3"] = typeof(Vector3),
+        ["Color3"] = typeof(Color3),
+        ["BrickColor"] = typeof(BrickColor),
+        ["CFrame"] = typeof(CoordinateFrame),
+        ["UDim2"] = typeof(UDim2),
+        ["string"] = typeof(String),
+        ["math"] = typeof(math),
+        ["task"] = typeof(task)
+    };
     public delegate System.Collections.IEnumerator Standard(CallData data);
 
     private static bool initialized = false;
@@ -26,17 +40,6 @@ public static class Globals
         Logging.Debug($"Initializing...", "Globals:Init");
         IterateClass(typeof(GC), list, "", true);
         ESS.np.gameObject.SetActive(false);
-        list["game"] = DataModel.instance.GetType();
-        list["workspace"] = Workspace.instance.GetType();
-        list["Enum"] = typeof(Enum);
-        list["Vector2"] = typeof(Vector2);
-        list["Vector3"] = typeof(Vector3);
-        list["Color3"] = typeof(Color3);
-        list["BrickColor"] = typeof(BrickColor);
-        list["CFrame"] = typeof(CoordinateFrame);
-        list["UDim2"] = typeof(UDim2);
-        list["string"] = typeof(String);
-        list["math"] = typeof(math);
         initialized = true;
     }
 

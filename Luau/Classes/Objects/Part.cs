@@ -48,6 +48,21 @@ public class Part : MonoBehaviour
             mr.material.SetColor("_BaseColor", new Color(value.r, value.g, value.b));
         }
     }
+    public CFrame CFrame
+    {
+        get
+        {
+            CFrame cf = new CFrame(transform.position);
+            cf *= transform.rotation;
+            return cf;
+        }
+        set
+        {
+            transform.position = new UnityEngine.Vector3((float)value.X, (float)value.Y, (float)value.Z);
+            double[] l = CFrame.quaternionFromCFrame(value);
+            transform.rotation = new Quaternion((float)l[0], (float)l[1], (float)l[2], (float)l[3]);
+        }
+    }
 
     public string Name
     {

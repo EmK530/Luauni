@@ -10,6 +10,8 @@ using Newtonsoft.Json;
 using TMPro;
 using System.Diagnostics;
 using System.Linq;
+using System.Runtime.InteropServices;
+using static UnityEngine.Rendering.VolumeComponent;
 
 public struct LuauniConfig
 {
@@ -117,20 +119,6 @@ public class Luauni : MonoBehaviour
                 string stdout = compile.StandardOutput.ReadToEnd();
                 string stderr = compile.StandardOutput.ReadToEnd();
                 compile.WaitForExit();
-                if (File.Exists(Application.streamingAssetsPath + "\\Compiled\\" + targetScript + ".bin"))
-                {
-                    Logging.Print("Script compiled, attempting read...");
-                    br = new ByteReader(File.ReadAllBytes(Application.streamingAssetsPath + "\\Compiled\\" + targetScript + ".bin"));
-                    Parse();
-                    /*
-                    if (ready)
-                        if (tag == "LocalScript" && Array.IndexOf(validExecutionSpots, transform.parent.tag) >= 0)
-                        {
-                            Logging.Debug(targetScript + " will execute.");
-                            StartCoroutine(Execute());
-                        }
-                    */
-                }
             } else {
                 Logging.Error("Could not find luau-compile.exe, cannot compile.", "Luauni:Start");
                 enabled = false;
@@ -138,7 +126,21 @@ public class Luauni : MonoBehaviour
         } else
         {
             Logging.Error("Could not find script file: " + targetScript + ".lua", "Luauni:Start");
-            enabled = false;
+            //enabled = false;
+        }
+        if (File.Exists(Application.streamingAssetsPath + "\\Compiled\\" + targetScript + ".bin"))
+        {
+            Logging.Print("Found compiled script, attempting read...");
+            br = new ByteReader(File.ReadAllBytes(Application.streamingAssetsPath + "\\Compiled\\" + targetScript + ".bin"));
+            Parse();
+            /*
+            if (ready)
+                if (tag == "LocalScript" && Array.IndexOf(validExecutionSpots, transform.parent.tag) >= 0)
+                {
+                    Logging.Debug(targetScript + " will execute.");
+                    StartCoroutine(Execute());
+                }
+            */
         }
     }
 
@@ -193,10 +195,10 @@ public class Luauni : MonoBehaviour
         byte varver = br.ReadByte();
         Logging.Debug($"Luau version: {ver}", "Luauni:Parse");
         Logging.Debug($"Type version: {varver}", "Luauni:Parse");
-        if(ver!=5)
-            Logging.Warn("Lua version mismatch! Expect issues!", "Luauni:Parse");
+        if(ver!=5 && ver!=6)
+            Logging.Warn("Unsupported Luau version, expect issues!", "Luauni:Parse");
         if(varver!=1)
-            Logging.Warn("Type version mismatch! Expect issues!", "Luauni:Parse");
+            Logging.Warn("Unexpected Type version, expect issues!", "Luauni:Parse");
 
         // build string table
 
@@ -207,7 +209,19 @@ public class Luauni : MonoBehaviour
         {
             string str = br.ReadRangeStr(br.ReadVariableLen());
             stringtable[i] = str;
-            //Logging.Debug($"String table entry #{i+1}: {str}", "Luauni:Parse");
+            Logging.Debug($"String table entry #{i+1}: {str}", "Luauni:Parse");
+        }
+
+        // weird thing that I don't care about
+        if(varver == 3)
+        {
+            Logging.Warn("Skipping past userdataRemapping...", "Luauni:Parse");
+            byte index = br.ReadByte();
+            while(index != 0)
+            {
+                string str = br.ReadRangeStr(br.ReadVariableLen());
+                index = br.ReadByte();
+            }
         }
 
         // read and init protos
@@ -354,31 +368,24 @@ public class Luauni : MonoBehaviour
                 case LuauOpcode.LOP_CLOSEUPVALS:
                 case LuauOpcode.LOP_FASTCALL:
                 case LuauOpcode.LOP_FASTCALL1:
+                    Logging.Debug($"Ignoring opcode not planned to support: {opcode}", "Luauni:Step");
+                    break;
                 case LuauOpcode.LOP_FASTCALL2:
                 case LuauOpcode.LOP_FASTCALL2K:
+                    target.nextInst(); // skip AUX
                     Logging.Debug($"Ignoring opcode not planned to support: {opcode}", "Luauni:Step");
                     break;
                 case LuauOpcode.LOP_ADD:
                     {
-                        uint b = Luau.INSN_B(inst);
-                        object rg1 = currentProto.registers[Luau.INSN_B(inst)];
-                        object rg2 = currentProto.registers[Luau.INSN_C(inst)];
-                        if (rg1 == null || rg2 == null)
-                        {
-                            Logging.Error($"attempt to perform arithmetic (add) on {Misc.GetTypeName(rg1)} and {Misc.GetTypeName(rg2)}", "Luauni:Step");
-                            target.complete = true;
-                            yield break;
-                        }
-                        else
-                        {
-                            currentProto.registers[Luau.INSN_A(inst)] = (double)rg1 + (double)rg2;
-                        }
+                        dynamic rg1 = currentProto.registers[Luau.INSN_B(inst)];
+                        dynamic rg2 = currentProto.registers[Luau.INSN_C(inst)];
+                        currentProto.registers[Luau.INSN_A(inst)] = rg1 + rg2;
                     }
                     break;
                 case LuauOpcode.LOP_ADDK:
                     {
-                        double rg1 = (double)currentProto.registers[Luau.INSN_B(inst)];
-                        double rg2 = (double)currentProto.k[Luau.INSN_C(inst)];
+                        dynamic rg1 = currentProto.registers[Luau.INSN_B(inst)];
+                        dynamic rg2 = currentProto.k[Luau.INSN_C(inst)];
                         currentProto.registers[Luau.INSN_A(inst)] = rg1 + rg2;
                     }
                     break;
@@ -453,16 +460,27 @@ public class Luauni : MonoBehaviour
                             Logging.Error($"Cannot CAPTURE upvalue because nups limit has been exceeded for the proto.", "Luauni:Step"); target.complete = true; yield break;
                         }
                         Logging.Debug($"Capturing upvalue of type {cap}", "Luauni:Step");
-                        if(cap == LuauCaptureType.LCT_VAL)
+                        switch(cap)
                         {
-                            target.lCC.upvals[target.lCC.loadedUps] = currentProto.registers[Luau.INSN_B(inst)];
-                        } else
-                        {
-                            target.lCC.upvals[target.lCC.loadedUps] = new UpvalREF()
-                            {
-                                src = currentProto,
-                                register = Luau.INSN_B(inst)
-                            };
+                            case LuauCaptureType.LCT_VAL:
+                                {
+                                    target.lCC.upvals[target.lCC.loadedUps] = currentProto.registers[Luau.INSN_B(inst)];
+                                }
+                                break;
+                            case LuauCaptureType.LCT_REF:
+                                {
+                                    target.lCC.upvals[target.lCC.loadedUps] = new UpvalREF()
+                                    {
+                                        src = currentProto,
+                                        register = Luau.INSN_B(inst)
+                                    };
+                                }
+                                break;
+                            case LuauCaptureType.LCT_UPVAL:
+                                {
+                                    target.lCC.upvals[target.lCC.loadedUps] = target.cL[target.cEL].upvals[Luau.INSN_B(inst)];
+                                }
+                                break;
                         }
                         target.lCC.loadedUps++;
                         break;
@@ -482,15 +500,15 @@ public class Luauni : MonoBehaviour
                     break;
                 case LuauOpcode.LOP_DIV:
                     {
-                        double rg1 = (double)currentProto.registers[Luau.INSN_B(inst)];
-                        double rg2 = (double)currentProto.registers[Luau.INSN_C(inst)];
+                        dynamic rg1 = currentProto.registers[Luau.INSN_B(inst)];
+                        dynamic rg2 = currentProto.registers[Luau.INSN_C(inst)];
                         currentProto.registers[Luau.INSN_A(inst)] = rg1 / rg2;
                     }
                     break;
                 case LuauOpcode.LOP_DIVK:
                     {
-                        double rg1 = (double)currentProto.registers[Luau.INSN_B(inst)];
-                        double rg2 = (double)currentProto.k[Luau.INSN_C(inst)];
+                        dynamic rg1 = currentProto.registers[Luau.INSN_B(inst)];
+                        dynamic rg2 = currentProto.k[Luau.INSN_C(inst)];
                         currentProto.registers[Luau.INSN_A(inst)] = rg1 / rg2;
                     }
                     break;
@@ -595,7 +613,15 @@ public class Luauni : MonoBehaviour
                         }
                         string importPath = string.Join('.', importPathParts);
                         Logging.Debug("Retrieving import: " + importPath, "Luauni:Step");
-                        currentProto.registers[Luau.INSN_A(inst)] = currentProto.imports[importPath];
+                        object import = currentProto.imports[importPath];
+                        if (import == null)
+                        {
+                            Logging.Error($"Import path '{importPath} is nil.'"); target.complete = true; yield break;
+                        }
+                        else
+                        {
+                            currentProto.registers[Luau.INSN_A(inst)] = import;
+                        }
                         break;
                     }
                 case LuauOpcode.LOP_GETTABLE:
@@ -730,6 +756,9 @@ public class Luauni : MonoBehaviour
                     {
                         uint idx = Luau.INSN_B(inst);
                         Closure cl = target.cL[target.cEL];
+                        print(cl);
+                        print(idx);
+                        print(cl.loadedUps);
                         if(cl.loadedUps <= idx)
                         {
                             Logging.Error($"Cannot GETUPVAL because index is outside the range of loaded upvalues.", "Luauni:Step");
@@ -934,7 +963,7 @@ public class Luauni : MonoBehaviour
                         break;
                     }
                 case LuauOpcode.LOP_NEWCLOSURE:
-                   target. lCC = new Closure() {
+                    target.lCC = new Closure() {
                         p = currentProto.p[Luau.INSN_D(inst)],
                         upvals = new object[currentProto.p[Luau.INSN_D(inst)].nups],
                         owner = target.source.owner
@@ -1143,15 +1172,15 @@ public class Luauni : MonoBehaviour
                     }
                 case LuauOpcode.LOP_SUB:
                     {
-                        double rg1 = (double)currentProto.registers[Luau.INSN_B(inst)];
-                        double rg2 = (double)currentProto.registers[Luau.INSN_C(inst)];
+                        dynamic rg1 = currentProto.registers[Luau.INSN_B(inst)];
+                        dynamic rg2 = currentProto.registers[Luau.INSN_C(inst)];
                         currentProto.registers[Luau.INSN_A(inst)] = rg1 - rg2;
                     }
                     break;
                 case LuauOpcode.LOP_SUBK:
                     {
-                        double rg1 = (double)currentProto.registers[Luau.INSN_B(inst)];
-                        double rg2 = (double)currentProto.k[Luau.INSN_C(inst)];
+                        dynamic rg1 = currentProto.registers[Luau.INSN_B(inst)];
+                        dynamic rg2 = currentProto.k[Luau.INSN_C(inst)];
                         currentProto.registers[Luau.INSN_A(inst)] = rg1 - rg2;
                     }
                     break;
