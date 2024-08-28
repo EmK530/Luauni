@@ -10,8 +10,6 @@ using Newtonsoft.Json;
 using TMPro;
 using System.Diagnostics;
 using System.Linq;
-using System.Runtime.InteropServices;
-using static UnityEngine.Rendering.VolumeComponent;
 
 public struct LuauniConfig
 {
@@ -1073,6 +1071,7 @@ public class Luauni : MonoBehaviour
                         {
                             Logging.Error($"Attempt to index nil with {key}", "Luauni:Step"); target.complete = true; yield break;
                         }
+                        object reg = currentProto.registers[Luau.INSN_A(inst)];
                         Type t = Misc.SafeType(tgt);
                         Logging.Debug(t);
                         Logging.Debug(tgt);
@@ -1081,35 +1080,44 @@ public class Luauni : MonoBehaviour
                             NamedDict nd = (NamedDict)tgt;
                             if (nd.dict.TryGetValue(key, out object val))
                             {
-                                nd.dict[key] = currentProto.registers[Luau.INSN_A(inst)];
+                                nd.dict[key] = reg;
                             }
                             else
                             {
-                                nd.dict.Add(key, currentProto.registers[Luau.INSN_A(inst)]);
+                                nd.dict.Add(key, reg);
                             }
                         } else if (t == typeof(Dictionary<string, object>))
                         {
                             Dictionary<string, object> arr = (Dictionary<string, object>)tgt;
                             if (arr.ContainsKey(key))
                             {
-                                arr[key] = currentProto.registers[Luau.INSN_A(inst)];
+                                arr[key] = reg;
                             } else
                             {
-                                arr.Add(key, currentProto.registers[Luau.INSN_A(inst)]);
+                                arr.Add(key, reg);
                             }
                         } else
                         {
                             PropertyInfo p = t.GetProperty(key, search);
                             if (p != null)
                             {
-                                p.SetValue(tgt, currentProto.registers[Luau.INSN_A(inst)]);
+                                Type t1 = p.PropertyType;
+                                Type t2 = Misc.SafeType(reg);
+                                if (t1.IsEnum && t2 == typeof(string))
+                                {
+                                    p.SetValue(tgt, System.Enum.Parse(t1, (string)reg));
+                                }
+                                else
+                                {
+                                    p.SetValue(tgt, reg);
+                                }
                             }
                             else
                             {
                                 FieldInfo f = t.GetField(key, search);
                                 if (f != null)
                                 {
-                                    f.SetValue(tgt, currentProto.registers[Luau.INSN_A(inst)]);
+                                    f.SetValue(tgt, reg);
                                 }
                                 else
                                 {
