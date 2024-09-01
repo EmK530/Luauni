@@ -1,9 +1,15 @@
 using System;
 using System.Collections;
+using System.Collections.Generic;
 using UnityEngine;
 
 public class MeshPart : MonoBehaviour
 {
+    public static readonly List<Type> _inherits = new List<Type>()
+    {
+        typeof(Instance)
+    };
+
     public readonly string ClassName = "MeshPart";
 
     public string Name
@@ -114,6 +120,12 @@ public class MeshPart : MonoBehaviour
         {
             transform.SetParent(Misc.SafeGameObjectFromClass(value).transform);
         }
+    }
+
+    public IEnumerator IsA(CallData dat) {
+        object[] inp = Luau.getAllArgs(ref dat);
+        Luau.returnToProto(ref dat, new object[1] { (string)inp[0] == "MeshPart" });
+        yield break;
     }
 
     public static bool isObject = true;

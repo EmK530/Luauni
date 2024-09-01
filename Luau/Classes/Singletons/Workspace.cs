@@ -1,9 +1,15 @@
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
 public class Workspace : MonoBehaviour
 {
+    public static readonly List<Type> _inherits = new List<Type>()
+    {
+        typeof(Instance)
+    };
+
     public static double DistributedGameTime
     {
         get { return Time.realtimeSinceStartupAsDouble; }
@@ -20,6 +26,20 @@ public class Workspace : MonoBehaviour
     }
     public static Camera CurrentCamera;
 
+    public static IEnumerator FindPartsInRegion3WithWhiteList(CallData dat) {
+        object[] inp = Luau.getAllArgs(ref dat);
+        Logging.Debug("FindPartsInRegion3WithWhiteList call: " + inp.ToString(), "Workspace");
+        Region3 region = (Region3)inp[1];
+        RaycastHit[] hits = Physics.BoxCastAll((region.max + region.min)/2, (region.max - region.min)/2, UnityEngine.Vector3.forward);
+        List<object> parts = new List<object>();
+        foreach (var hit in hits) {
+            if (hit.transform.gameObject.tag == "Part" || hit.transform.gameObject.tag == "MeshPart") {
+                parts.Add(Misc.TryGetType(hit.transform));
+            }
+        }
+        Luau.returnToProto(ref dat, new object[1] { parts.ToArray() });
+        yield break;
+    }
 
     public static Workspace instance;
     public static bool isObject = true;

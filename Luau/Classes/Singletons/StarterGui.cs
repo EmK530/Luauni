@@ -1,9 +1,15 @@
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
 public class StarterGui : MonoBehaviour
 {
+    public static readonly List<Type> _inherits = new List<Type>()
+    {
+        typeof(Instance)
+    };
+
     public static IEnumerator SetCoreGuiEnabled(CallData dat) { Luau.returnToProto(ref dat, new object[0]); yield break; } // we do not have coregui
 
     public static StarterGui instance;

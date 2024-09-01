@@ -19,8 +19,9 @@ public static class Globals
         ["Vector2"] = typeof(Vector2),
         ["Vector3"] = typeof(Vector3),
         ["Color3"] = typeof(Color3),
+        ["Region3"] = typeof(Region3),
         ["BrickColor"] = typeof(BrickColor),
-        ["CFrame"] = typeof(CoordinateFrame),
+        ["CFrame"] = typeof(CFrame),
         ["UDim2"] = typeof(UDim2),
         ["string"] = typeof(String),
         ["math"] = typeof(math),
@@ -210,8 +211,7 @@ public static class GC
         {
             var iter = new TableIterator((object[])inp[0]);
             Luau.returnToProto(ref dat, new object[3] { iter, inp[0], null });
-        } else
-        {
+        } else {
             var iter = new ArrayIterator((Dictionary<string, object>)inp[0]);
             Luau.returnToProto(ref dat, new object[3] { iter, inp[0], null });
         }

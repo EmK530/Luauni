@@ -2031,7 +2031,9 @@ public static class Enum
         Sand = 16,
         Slate = 17,
         Wood = 18,
-        WoodPlanks = 19
+        WoodPlanks = 19,
+        SmoothPlastic = 20,
+        Neon = 21
     }
     public enum MaterialPattern
     {

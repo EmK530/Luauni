@@ -1,9 +1,15 @@
 using System;
 using System.Collections;
+using System.Collections.Generic;
 using UnityEngine;
 
 public class Camera : MonoBehaviour
 {
+    public static readonly List<Type> _inherits = new List<Type>()
+    {
+        typeof(Instance)
+    };
+
     public readonly string ClassName = "Camera";
     public string CameraType = "Scriptable";
 
@@ -27,8 +33,8 @@ public class Camera : MonoBehaviour
         }
     }
 
-    private CoordinateFrame _cframe;
-    public CoordinateFrame CFrame
+    private CFrame _cframe;
+    public CFrame CFrame
     {
         get { return _cframe; }
         set
@@ -50,7 +56,7 @@ public class Camera : MonoBehaviour
             instance = this;
             source = gameObject;
             component = gameObject.GetComponent<UnityEngine.Camera>();
-            _cframe = new CoordinateFrame(transform.position, transform.rotation);
+            _cframe = new CFrame(transform.position, transform.rotation.eulerAngles);
         }
         else
         {

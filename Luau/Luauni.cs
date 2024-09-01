@@ -10,6 +10,7 @@ using Newtonsoft.Json;
 using TMPro;
 using System.Diagnostics;
 using System.Linq;
+using Unity.VisualScripting;
 
 public struct LuauniConfig
 {
@@ -274,52 +275,78 @@ public class Luauni : MonoBehaviour
     private Closure maincl;
     public SClosure main;
 
+    private static Dictionary<Type, Dictionary<string, MemberInfo>> reflectionCache = new Dictionary<Type, Dictionary<string, MemberInfo>>();
+
     public static bool ReflectionIndex(string key, ref SClosure target, uint inst)
     {
         object tgt = target.pL[target.cEL].registers[Luau.INSN_B(inst)];
         Type t = Misc.SafeType(tgt);
-        FieldInfo test = t.GetField(key, search);
-        Type test2 = t.GetNestedType(key, search);
-        MethodInfo test3 = t.GetMethod(key, search);
-        PropertyInfo test4 = t.GetProperty(key, search);
-        if (test != null)
+        if (!reflectionCache.TryGetValue(t, out var memberCache))
         {
-            object send = test.GetValue(tgt);
-            target.pL[target.cEL].registers[Luau.INSN_A(inst)] = send;
+            memberCache = new Dictionary<string, MemberInfo>();
+            reflectionCache[t] = memberCache;
         }
-        else if (test2 != null)
+        if (!memberCache.TryGetValue(key, out var member))
         {
-            target.pL[target.cEL].registers[Luau.INSN_A(inst)] = test2;
+            member = t.GetField(key, search) as MemberInfo
+                ?? t.GetNestedType(key, search) as MemberInfo
+                ?? t.GetMethod(key, search) as MemberInfo
+                ?? t.GetProperty(key, search) as MemberInfo;
+            if (member == null)
+            {
+                FieldInfo f1 = t.GetField("_inherits");
+                if (f1 != null)
+                {
+                    List<Type> l = (List<Type>)f1.GetValue(tgt);
+                    foreach (Type t2 in l)
+                    {
+                        member = t2.GetField(key, search) as MemberInfo
+                            ?? t2.GetNestedType(key, search) as MemberInfo
+                            ?? t2.GetMethod(key, search) as MemberInfo
+                            ?? t2.GetProperty(key, search) as MemberInfo;
+                        if (member != null)
+                        {
+                            break;
+                        }
+                    }
+                }
+            }
+            memberCache[key] = member;
         }
-        else if (test3 != null)
+        if (member != null)
         {
-            target.pL[target.cEL].registers[Luau.INSN_A(inst)] = (Globals.Standard)Delegate.CreateDelegate(typeof(Globals.Standard), test3.IsStatic ? null : tgt, test3);
-        }
-        else if (test4 != null)
-        {
-            object send = test4.GetValue(tgt);
-            target.pL[target.cEL].registers[Luau.INSN_A(inst)] = send;
+            if (member is FieldInfo field)
+            {
+                object send = field.GetValue(tgt);
+                target.pL[target.cEL].registers[Luau.INSN_A(inst)] = send;
+            }
+            else if (member is Type nestedType)
+            {
+                target.pL[target.cEL].registers[Luau.INSN_A(inst)] = nestedType;
+            }
+            else if (member is MethodInfo method)
+            {
+                target.pL[target.cEL].registers[Luau.INSN_A(inst)] = (Globals.Standard)Delegate.CreateDelegate(typeof(Globals.Standard), tgt, method);
+            }
+            else if (member is PropertyInfo property)
+            {
+                object send = property.GetValue(tgt);
+                target.pL[target.cEL].registers[Luau.INSN_A(inst)] = send;
+            }
         }
         else
         {
             FieldInfo isObject = t.GetField("isObject");
             if (isObject == null)
             {
-                Logging.Error($"Internal error: isObject not part of class {t.Name}", "Luauni:Step"); return false;
+                Logging.Error($"Internal error: isObject not part of class {t.Name}", "Luauni:Step");
+                return false;
             }
             bool indexable = (bool)isObject.GetValue(t);
             if (indexable)
             {
                 FieldInfo f1 = t.GetField("source", search);
-                GameObject obj;
-                if (f1 != null)
-                {
-                    obj = (GameObject)(f1.GetValue(tgt));
-                }
-                else
-                {
-                    obj = ((Component)tgt).gameObject;
-                }
+                GameObject obj = f1 != null ? (GameObject)(f1.GetValue(tgt)) : ((Component)tgt).gameObject;
                 Transform find = obj.transform.Find(key);
                 if (find != null)
                 {
@@ -327,12 +354,14 @@ public class Luauni : MonoBehaviour
                 }
                 else
                 {
-                    Logging.Error($"{key} is not a valid member of {tgt}", "Luauni:Step"); return false;
+                    Logging.Error($"{key} is not a valid member of {tgt}", "Luauni:Step");
+                    return false;
                 }
             }
             else
             {
-                Logging.Error($"{key} is not a valid member of {tgt}", "Luauni:Step"); return false;
+                Logging.Error($"{key} is not a valid member of {tgt}", "Luauni:Step");
+                return false;
             }
         }
         return true;
@@ -416,6 +445,7 @@ public class Luauni : MonoBehaviour
                                 returns = returns
                             };
                             yield return tgt.Invoke(send);
+                            currentProto.stacktop = (byte)(reg + returns);
                             if (currentProto.globalErrored)
                             {
                                 target.complete = true;
@@ -423,7 +453,8 @@ public class Luauni : MonoBehaviour
                             }
                         } else if (regType == typeof(Closure))
                         {
-                            currentProto.callReg = reg; currentProto.expectedReturns = returns;
+                            currentProto.callReg = reg;
+                            currentProto.expectedReturns = returns;
                             Closure cl = (Closure)currentProto.registers[reg];
                             Proto pr = cl.p;
                             Logging.Debug($"Moving exeution to proto {pr.bytecodeid}, passing {args} args.", "Luauni:Step");
@@ -439,6 +470,7 @@ public class Luauni : MonoBehaviour
                             {
                                 pr.registers[i] = i < args ? currentProto.registers[reg + i + 1] : null;
                             }
+                            currentProto.stacktop = (byte)(reg + returns);
                             target.pL.Add(pr);
                             target.iP.Add(-1);
                             target.cL.Add(cl);
@@ -476,7 +508,7 @@ public class Luauni : MonoBehaviour
                                 break;
                             case LuauCaptureType.LCT_UPVAL:
                                 {
-                                    target.lCC.upvals[target.lCC.loadedUps] = target.cL[target.cEL].upvals[Luau.INSN_B(inst)];
+                                    target.lCC.upvals[target.lCC.loadedUps] = target.source.upvals[Luau.INSN_B(inst)];
                                 }
                                 break;
                         }
@@ -602,7 +634,7 @@ public class Luauni : MonoBehaviour
                             int index = (int)((aux >> (20 - shiftAmount)) & 1023);
                             if (index >= currentProto.k.Length)
                             {
-                                Logging.Error($"Invalid constant index for GETIMPORT: {index}."); target.complete = true; yield break;
+                                Logging.Error($"Invalid constant index for GETIMPORT: {index}.", "Luauni:Step"); target.complete = true; yield break;
                             }
                             else
                             {
@@ -614,7 +646,7 @@ public class Luauni : MonoBehaviour
                         object import = currentProto.imports[importPath];
                         if (import == null)
                         {
-                            Logging.Error($"Import path '{importPath} is nil.'"); target.complete = true; yield break;
+                            Logging.Error($"Import path '{importPath} is nil.'", "Luauni:Step"); target.complete = true; yield break;
                         }
                         else
                         {
@@ -753,10 +785,7 @@ public class Luauni : MonoBehaviour
                 case LuauOpcode.LOP_GETUPVAL:
                     {
                         uint idx = Luau.INSN_B(inst);
-                        Closure cl = target.cL[target.cEL];
-                        print(cl);
-                        print(idx);
-                        print(cl.loadedUps);
+                        Closure cl = target.source;
                         if(cl.loadedUps <= idx)
                         {
                             Logging.Error($"Cannot GETUPVAL because index is outside the range of loaded upvalues.", "Luauni:Step");
@@ -947,15 +976,36 @@ public class Luauni : MonoBehaviour
                         }
                         else
                         {
-                            MethodInfo get = Type.GetType("InheritedByAll").GetMethod(key);
-                            if (get != null)
+                            List<Type> inherits = new List<Type>();
+                            FieldInfo f1 = t.GetField("_inherits");
+                            if (f1 != null)
                             {
-                                currentProto.recentNameCalledRegister = currentProto.registers[b];
-                                currentProto.registers[a] = (Globals.Standard)Delegate.CreateDelegate(typeof(Globals.Standard), get.IsStatic ? null : reg, get); ;
+                                inherits = (List<Type>)f1.GetValue(reg);
+                            } 
+                            else if(t == typeof(GameObject))
+                            {
+                                inherits.Add(typeof(Instance));
                             }
                             else
                             {
                                 Logging.Error($"{key} is not a valid member of {reg}", "Luauni:Step"); target.complete = true; yield break;
+                            }
+                            foreach (Type t2 in inherits)
+                            {
+                                MemberInfo member = t2.GetField(key, search) as MemberInfo
+                                    ?? t2.GetNestedType(key, search) as MemberInfo
+                                    ?? t2.GetMethod(key, search) as MemberInfo
+                                    ?? t2.GetProperty(key, search) as MemberInfo;
+                                if (member != null)
+                                {
+                                    currentProto.recentNameCalledRegister = currentProto.registers[b];
+                                    currentProto.registers[a] = (Globals.Standard)Delegate.CreateDelegate(typeof(Globals.Standard), member.IsStatic() ? null : reg, (MethodInfo)member); ;
+                                    break;
+                                }
+                                else
+                                {
+                                    Logging.Error($"{key} is not a valid member of {reg}", "Luauni:Step"); target.complete = true; yield break;
+                                }
                             }
                         }
                         break;
@@ -975,7 +1025,16 @@ public class Luauni : MonoBehaviour
                     currentProto.registers[Luau.INSN_A(inst)] = !Luau.LIKELY(currentProto.registers[Luau.INSN_B(inst)]);
                     break;
                 case LuauOpcode.LOP_OR:
-                    currentProto.registers[Luau.INSN_A(inst)] = Luau.LIKELY(currentProto.registers[Luau.INSN_B(inst)]) ? currentProto.registers[Luau.INSN_B(inst)] : currentProto.registers[Luau.INSN_C(inst)];
+                    {
+                        object r1 = currentProto.registers[Luau.INSN_B(inst)];
+                        currentProto.registers[Luau.INSN_A(inst)] = Luau.LIKELY(r1) ? r1 : currentProto.registers[Luau.INSN_C(inst)];
+                    }
+                    break;
+                case LuauOpcode.LOP_ORK:
+                    {
+                        object r1 = currentProto.registers[Luau.INSN_B(inst)];
+                        currentProto.registers[Luau.INSN_A(inst)] = Luau.LIKELY(r1) ? r1 : currentProto.k[Luau.INSN_C(inst)];
+                    }
                     break;
                 case LuauOpcode.LOP_POW:
                     {
@@ -1012,7 +1071,8 @@ public class Luauni : MonoBehaviour
                         Proto edit = target.pL[target.cEL - 1];
                         for (int i = 0; i < returns; i++)
                         {
-                            edit.registers[startReg + i] = i < edit.expectedReturns ? currentProto.registers[begin + i] : null;
+                            Logging.Warn(startReg + i);
+                            edit.registers[startReg + i] = i < (edit.expectedReturns == 0 ? returns : edit.expectedReturns) ? currentProto.registers[begin + i] : null;
                         }
                         currentProto = edit;
                         target.pL.RemoveAt(target.cEL);
@@ -1161,7 +1221,7 @@ public class Luauni : MonoBehaviour
                 case LuauOpcode.LOP_SETUPVAL:
                     {
                         uint idx = Luau.INSN_B(inst);
-                        Closure cl = target.cL[target.cEL];
+                        Closure cl = target.source;
                         if (cl.loadedUps <= idx)
                         {
                             Logging.Error($"Cannot SETUPVAL because index is outside the range of loaded upvalues.", "Luauni:Step"); target.complete = true; yield break;

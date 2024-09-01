@@ -11,8 +11,18 @@ public class CFrame
 
     private double m11 = 1, m12 = 0, m13 = 0, m14 = 0;
     private double m21 = 0, m22 = 1, m23 = 0, m24 = 0;
-    private double m31 = 0, m32 = 0, m33 = 1, m34 = 0;
+    private double m31 = 0, m32 = 0, m33 = -1, m34 = 0;
     private const double m41 = 0, m42 = 0, m43 = 0, m44 = 1;
+
+    public Vector3 Position
+    {
+        get { return new Vector3(X, Y, Z); }
+        set { X = value.X; Y = value.Y; Z = value.Z; }
+    }
+    public Quaternion Rotation
+    {
+        get { return (Quaternion)this; }
+    }
 
     // modification - make x,y,z not readonly
     public double X = 0, Y = 0, Z = 0;
@@ -312,17 +322,39 @@ public class CFrame
         return new CFrame(0, 0, 0, r.X, u.X, b.X, r.Y, u.Y, b.Y, r.Z, u.Z, b.Z);
     }
 
-    public static CFrame Angles(double x, double y, double z)
+    public static CFrame _angles(double x, double y, double z)
     {
         CFrame cfx = fromAxisAngle(RIGHT, x);
         CFrame cfy = fromAxisAngle(UP, y);
         CFrame cfz = fromAxisAngle(BACK, z);
         return cfx * cfy * cfz;
     }
+    public static IEnumerator Angles(CallData dat)
+    {
+        object[] inp = Luau.getAllArgs(ref dat);
+        double x = 0d; double y = 0d; double z = 0d;
+        switch (inp.Length)
+        {
+            case 1:
+                x = Convert.ToDouble(inp[0]);
+                break;
+            case 2:
+                x = Convert.ToDouble(inp[0]); y = Convert.ToDouble(inp[1]);
+                break;
+            case 3:
+                x = Convert.ToDouble(inp[0]); y = Convert.ToDouble(inp[1]); z = Convert.ToDouble(inp[2]);
+                break;
+        }
+        CFrame cfx = fromAxisAngle(RIGHT, x);
+        CFrame cfy = fromAxisAngle(UP, y);
+        CFrame cfz = fromAxisAngle(BACK, z);
+        Luau.returnToProto(ref dat, new object[1] { cfx * cfy * cfz });
+        yield break;
+    }
 
     public static CFrame fromEulerAnglesXYZ(double x, double y, double z)
     {
-        return Angles(x, y, z);
+        return _angles(x, y, z);
     }
 
     public static Vector3 ToVector(CFrame c)

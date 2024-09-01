@@ -5,6 +5,11 @@ using UnityEngine;
 
 public class DataModel : MonoBehaviour
 {
+    public static readonly List<Type> _inherits = new List<Type>()
+    {
+        typeof(Instance)
+    };
+
     public static double CreatorId = 71510352;
     public static Enum.CreatorType CreatorType = Enum.CreatorType.User;
     public static double GameId = 0;

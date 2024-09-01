@@ -9,6 +9,10 @@ public class Vector2
 
     public double X, Y;
     public readonly double Magnitude;
+    public double magnitude
+    {
+        get { return Magnitude; }
+    }
     public Vector2 unit { get { return normalize(this); } }
 
     public Vector2(double x = 0, double y = 0)

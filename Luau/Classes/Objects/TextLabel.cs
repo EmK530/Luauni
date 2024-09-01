@@ -1,5 +1,6 @@
 using System;
 using System.Collections;
+using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
 using static Enum;
@@ -7,6 +8,11 @@ using static Enum;
 [ExecuteInEditMode]
 public class TextLabel : MonoBehaviour
 {
+    public static readonly List<Type> _inherits = new List<Type>()
+    {
+        typeof(Instance)
+    };
+
     public readonly string ClassName = "TextLabel";
 
     private RectTransform rt;

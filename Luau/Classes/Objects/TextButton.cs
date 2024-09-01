@@ -1,9 +1,16 @@
+using System;
 using System.Collections;
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.EventSystems;
 
 public class TextButton : MonoBehaviour, IPointerEnterHandler, IPointerClickHandler
 {
+    public static readonly List<Type> _inherits = new List<Type>()
+    {
+        typeof(Instance)
+    };
+
     public readonly string ClassName = "TextButton";
     public string Name
     {

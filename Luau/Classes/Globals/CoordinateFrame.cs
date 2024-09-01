@@ -8,6 +8,9 @@ public class CoordinateFrame
     public readonly string ClassName = "CoordinateFrame";
 
     public readonly Vector3 Position;
+    public Vector3 p {
+        get { return Position; }
+    }
     public readonly Quaternion Rotation;
 
     public CoordinateFrame(float x, float y, float z)
@@ -83,4 +86,5 @@ public class CoordinateFrame
     {
         return a.Transform(b);
     }
+    public static bool isObject = false;
 }

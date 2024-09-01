@@ -5,6 +5,11 @@ using UnityEngine;
 
 public class Lighting : MonoBehaviour
 {
+    public static readonly List<Type> _inherits = new List<Type>()
+    {
+        typeof(Instance)
+    };
+
     [SerializeField]
     private Light Light;
 

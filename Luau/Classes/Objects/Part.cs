@@ -1,10 +1,16 @@
+using System;
 using System.Collections;
+using System.Collections.Generic;
 using UnityEngine;
-using static UnityEngine.Rendering.DebugUI;
 
 [ExecuteInEditMode]
 public class Part : MonoBehaviour
 {
+    public static readonly List<Type> _inherits = new List<Type>()
+    {
+        typeof(Instance)
+    };
+
     public readonly string ClassName = "BasePart";
 
     public object Parent
@@ -80,6 +86,12 @@ public class Part : MonoBehaviour
         {
             Logging.Warn("Support for this property is postponed.", "Part:CollisionGroupId");
         }
+    }
+
+    public Vector3 Velocity
+    {
+        get { return transform.GetComponent<Rigidbody>().velocity; }
+        set { transform.GetComponent<Rigidbody>().velocity = value; }
     }
 
     [SerializeField]

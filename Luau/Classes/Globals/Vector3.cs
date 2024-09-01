@@ -9,6 +9,10 @@ public class Vector3
 
     public double X, Y, Z;
     public readonly double Magnitude;
+    public double magnitude
+    {
+        get { return Magnitude; }
+    }
     public Vector3 unit { get { return normalize(this); } }
 
     public Vector3(double x = 0, double y = 0, double z = 0)

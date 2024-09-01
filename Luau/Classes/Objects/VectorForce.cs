@@ -1,16 +1,17 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Xml;
 using UnityEngine;
 
-public class Color3Value : MonoBehaviour
+public class VectorForce : MonoBehaviour
 {
     public static readonly List<Type> _inherits = new List<Type>()
     {
         typeof(Instance)
     };
 
-    public readonly string ClassName = "Color3Value";
+    public readonly string ClassName = "VectorForce";
 
     public string Name
     {
@@ -30,21 +31,14 @@ public class Color3Value : MonoBehaviour
         }
     }
 
-    [SerializeField]
-    private Color _value;
-    public Color3 Value
-    {
-        get { return new Color3(_value.r, _value.g, _value.b); }
-        set
-        {
-            _value = new Color(value.r, value.g, value.b);
-        }
-    }
+    public bool ApplyAtCenterOfMass = true;
+
+    public Vector3 Force = new Vector3();
 
     public static bool isObject = true;
 
-    void Start()
+    void Update()
     {
-        gameObject.SetActive(false);
+        transform.parent.gameObject.GetComponent<Rigidbody>().velocity = Force;
     }
 }

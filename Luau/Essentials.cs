@@ -3,6 +3,7 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Linq;
 using System.Reflection;
 using UnityEngine;
 
@@ -59,6 +60,7 @@ public class Proto
     public byte stacktop
     {
         get { return registers.stacktop; }
+        set { registers.stacktop = value; }
     }
     public object recentNameCalledRegister;
     public bool globalErrored = false;
@@ -271,7 +273,7 @@ public static class Luau
         uint tern = p.returns == 0 ? (uint)args.Length : p.returns - 1;
         for (uint i = 0; i < tern; i++)
         {
-            object tern2 = (i <= p.initiator.expectedReturns && i < args.Length) ? args[i] : null;
+            object tern2 = (i <= p.returns && i < args.Length) ? args[i] : null;
             p.initiator.registers[p.funcRegister + i] = tern2;
         }
     }
@@ -338,6 +340,16 @@ public static class Luau
 
 public static class ParseEssentials
 {
+    private static bool IsStandardFunction(MethodInfo methodInfo)
+    {
+        var compare = typeof(Globals.Standard).GetMethod("Invoke");
+        if (compare.ReturnType != methodInfo.ReturnType)
+            return false;
+        var methodParams = methodInfo.GetParameters().Select(p => p.ParameterType);
+        var compareParams = compare.GetParameters().Select(p => p.ParameterType);
+        return methodParams.SequenceEqual(compareParams);
+    }
+
     public static Proto PrepareProto(ByteReader br, int i, string[] tbl, Transform src, Proto[] protos, Luauni owner)
     {
         Proto p = new Proto();
@@ -496,6 +508,17 @@ public static class ParseEssentials
                                         }
                                         else if (test3 != null)
                                         {
+                                            if (!IsStandardFunction(test3))
+                                            {
+                                                Logging.Error("Import path: " + importPath + " does not match Globals.Standard", "Luauni:Parse:PP");
+                                                current = null;
+                                                break;
+                                            }
+                                            if (test3.ReturnType != typeof(IEnumerator)) {
+                                                Logging.Error("Import path: " + importPath + " has incorrect return type.", "Luauni:Parse:PP");
+                                                current = null;
+                                                break;
+                                            }
                                             current = (Globals.Standard)Delegate.CreateDelegate(typeof(Globals.Standard), test3.IsStatic ? null : current, test3);
                                         }
                                         else if (test4 != null)

@@ -1,8 +1,15 @@
+using System;
 using System.Collections;
+using System.Collections.Generic;
 using UnityEngine;
 
 public class LocalPlayer : MonoBehaviour
 {
+    public static readonly List<Type> _inherits = new List<Type>()
+    {
+        typeof(Instance)
+    };
+
     public static IEnumerator GetMouse(CallData dat)
     {
         Luau.returnToProto(ref dat, new object[1] { Mouse.instance.GetType() });
