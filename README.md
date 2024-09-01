@@ -33,7 +33,8 @@ This is a list of all the opcodes Luauni currently supports.<br>
 ✅ `LOP_ADD` `LOP_SUB` `LOP_MUL` `LOP_DIV` `LOP_MOD` `LOP_POW`<br>
 ✅ `LOP_ADDK` `LOP_SUBK` `LOP_MULK` `LOP_DIVK` `LOP_MODK` `LOP_POWK`<br>
 ✅ `LOP_AND` `LOP_OR`<br>
-❌ `LOP_ANDK` `LOP_ORK`<br>
+❌ `LOP_ANDK`<br>
+✅ `LOP_ORK`<br>
 ✅ `LOP_CONCAT`<br>
 ✅ `LOP_MINUS`<br>
 ✅ `LOP_NOT` `LOP_LENGTH`<br>
