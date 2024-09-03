@@ -6,14 +6,16 @@ using Unity.VisualScripting;
 using UnityEngine;
 
 [Inspectable]
-public class VectorForce : MonoBehaviour
+public class ParticleEmitter : MonoBehaviour
 {
     public static readonly List<Type> _inherits = new List<Type>()
     {
         typeof(Instance)
     };
 
-    public readonly string ClassName = "VectorForce";
+    public readonly string ClassName = "ParticleEmitter";
+
+    public bool Enabled = false;
 
     public string Name
     {
@@ -33,21 +35,5 @@ public class VectorForce : MonoBehaviour
         }
     }
 
-    [Inspectable]
-    public bool ApplyAtCenterOfMass = true;
-
-    [Inspectable] [SerializeField]
-    private UnityEngine.Vector3 _force;
-
-    public Vector3 Force {
-        get { return _force; }
-        set { _force = value; }
-    }
-
     public static bool isObject = true;
-
-    void Update()
-    {
-        transform.parent.gameObject.GetComponent<Rigidbody>().velocity = _force;
-    }
 }

@@ -11,7 +11,7 @@ public class CFrame
 
     private double m11 = 1, m12 = 0, m13 = 0, m14 = 0;
     private double m21 = 0, m22 = 1, m23 = 0, m24 = 0;
-    private double m31 = 0, m32 = 0, m33 = -1, m34 = 0;
+    private double m31 = 0, m32 = 0, m33 = 1, m34 = 0;
     private const double m41 = 0, m42 = 0, m43 = 0, m44 = 1;
 
     public Vector3 Position
@@ -205,7 +205,8 @@ public class CFrame
 
     public override string ToString()
     {
-        return System.String.Join(", ", components());
+        return "CFrame";
+        //return System.String.Join(", ", components());
     }
 
     // private static functions
@@ -213,7 +214,7 @@ public class CFrame
     private static Vector3 vectorAxisAngle(Vector3 n, Vector3 v, double t)
     {
         n = n.unit;
-        return v * Math.Cos(t) + Vector3.Dot(v, n) * n * (1 - Math.Cos(t)) + Vector3.Cross(n, v) * Math.Sin(t);
+        return v * Math.Cos(t) + Vector3._dot(v, n) * n * (1 - Math.Cos(t)) + Vector3.Cross(n, v) * Math.Sin(t);
     }
 
     private static double getDeterminant(CFrame a)
@@ -375,9 +376,19 @@ public class CFrame
         return invert4x4(this);
     }
 
-    public CFrame lerp(CFrame cf2, double t)
+    public CFrame _lerp(CFrame cf2, double t)
     {
         return lerpinternal(this, cf2, t);
+    }
+    public static IEnumerator Lerp(CallData dat)
+    {
+        object[] inp = Luau.getAllArgs(ref dat);
+        CFrame cf1 = (CFrame)dat.initiator.recentNameCalledRegister;
+        CFrame cf2 = (CFrame)inp[1];
+        double lerp = (double)inp[2];
+        CFrame result = lerpinternal(cf1, cf2, lerp);
+        Luau.returnToProto(ref dat, new object[1] { result });
+        yield break;
     }
 
     public CFrame toWorldSpace(CFrame cf2)

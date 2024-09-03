@@ -8,9 +8,12 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using UnityEngine;
+using static UnityEngine.GraphicsBuffer;
 
 public static class Globals
 {
+    private static Dictionary<string, Dictionary<string, object>> closureList = new Dictionary<string, Dictionary<string, object>>();
+
     public static Dictionary<string, object> list = new Dictionary<string, object>()
     {
         ["game"] = DataModel.instance.GetType(),
@@ -21,6 +24,7 @@ public static class Globals
         ["Color3"] = typeof(Color3),
         ["Region3"] = typeof(Region3),
         ["BrickColor"] = typeof(BrickColor),
+        ["Ray"] = typeof(Ray),
         ["CFrame"] = typeof(CFrame),
         ["UDim2"] = typeof(UDim2),
         ["string"] = typeof(String),
@@ -42,6 +46,18 @@ public static class Globals
         IterateClass(typeof(GC), list, "", true);
         ESS.np.gameObject.SetActive(false);
         initialized = true;
+    }
+
+    public static void Register(ref SClosure target)
+    {
+        string hsh = target.source.hash;
+        if(!closureList.ContainsKey(hsh))
+        {
+            closureList.Add(hsh, list);
+        } else
+        {
+            closureList[hsh] = list;
+        }
     }
 
     public static void IterateClass(Type i, Dictionary<string, object> contain, string path, bool top)
@@ -69,9 +85,9 @@ public static class Globals
             contain[t.Name] = (Standard)t.CreateDelegate(typeof(Standard));
         }
     }
-    public static object Get(string name)
+    private static object GetInternal(Dictionary<string, object> list, string name)
     {
-        Logging.Debug($"Get global '{name}'", "Globals:Get");
+        Logging.Debug($"Get global '{name}'", "Globals:GetDefault");
         if (list.TryGetValue(name, out var value))
         {
             if (value != null && value.GetType() == typeof(Dictionary<string, object>))
@@ -81,7 +97,8 @@ public static class Globals
                     name = name,
                     dict = (Dictionary<string, object>)value
                 };
-            } else
+            }
+            else
             {
                 return value;
             }
@@ -91,6 +108,17 @@ public static class Globals
             Logging.Debug($"Global name '{name}' is not registered.", "Globals:Get");
             return null;
         }
+    }
+    public static object Get(ref SClosure target, string name)
+    {
+        Logging.Debug($"Get global '{name}'", "Globals:Get");
+        Dictionary<string, object> lst = closureList[target.source.hash];
+        return GetInternal(lst, name);
+    }
+    public static object Get(string name)
+    {
+        Logging.Debug($"Get global '{name}'", "Globals:Get");
+        return GetInternal(list, name);
     }
     public static object NativeGet(string name)
     {
@@ -103,9 +131,9 @@ public static class Globals
             return "null";
         }
     }
-    public static void Set(string name, object value)
+    public static void Set(ref SClosure target, string name, object value)
     {
-        list[name] = value;
+        closureList[target.source.hash][name] = value;
     }
 }
 

@@ -5,6 +5,15 @@ using UnityEngine;
 
 public class Workspace : MonoBehaviour
 {
+    public string Name
+    {
+        get { return name; }
+        set
+        {
+            name = value;
+        }
+    }
+
     public static readonly List<Type> _inherits = new List<Type>()
     {
         typeof(Instance)
@@ -39,6 +48,21 @@ public class Workspace : MonoBehaviour
         }
         Luau.returnToProto(ref dat, new object[1] { parts.ToArray() });
         yield break;
+    }
+    
+    public static IEnumerator FindPartOnRayWithIgnoreList(CallData dat) {
+        object[] inp = Luau.getAllArgs(ref dat);
+
+        Logging.Debug("FindPartOnRayWithIgnoreList call: " + inp.ToString(), "Workspace");
+        Ray ray = (Ray)inp[1];
+        RaycastHit hit;
+        if (Physics.Raycast(ray.Origin, ray.Direction, out hit)) {
+            Luau.returnToProto(ref dat, new object[3] { Misc.TryGetType(hit.transform), (Vector3)hit.point, (Vector3)hit.normal });
+            yield break;
+        } else {
+            Luau.returnToProto(ref dat, new object[3] { null, new Vector3(0, 0, 0), new Vector3(0, 0, 0) });
+            yield break;
+        }
     }
 
     public static Workspace instance;

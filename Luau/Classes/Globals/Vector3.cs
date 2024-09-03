@@ -114,14 +114,15 @@ public class Vector3
 
     public override string ToString()
     {
-        return X + ", " + Y + ", " + Z;
+        return "Vector3";
+        //return X + ", " + Y + ", " + Z;
     }
 
     // statics
 
     private static double calcMagnitude(Vector3 v)
     {
-        return Math.Sqrt(Dot(v, v));
+        return Math.Sqrt(_dot(v, v));
     }
 
     private static Vector3 normalize(Vector3 v)
@@ -131,9 +132,18 @@ public class Vector3
         return new Vector3(nx, ny, nz);
     }
 
-    public static double Dot(Vector3 a, Vector3 b)
+    public static double _dot(Vector3 a, Vector3 b)
     {
         return a.X * b.X + a.Y * b.Y + a.Z * b.Z;
+    }
+
+    public static IEnumerator Dot(CallData dat)
+    {
+        object[] inp = Luau.getAllArgs(ref dat);
+        Vector3 v1 = (Vector3)dat.initiator.recentNameCalledRegister;
+        Vector3 v2 = (Vector3)inp[1];
+        Luau.returnToProto(ref dat, new object[1] { v1.X * v2.X + v1.Y * v2.Y + v1.Z * v2.Z });
+        yield break;
     }
 
     public static Vector3 Cross(Vector3 a, Vector3 b)

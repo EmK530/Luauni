@@ -51,6 +51,21 @@ public class MeshPart : MonoBehaviour
         }
     }
 
+    private CFrame _cf;
+    public CFrame CFrame
+    {
+        get
+        {
+            return _cf;
+        }
+        set
+        {
+            transform.position = value.Position;
+            transform.rotation = value.Rotation;
+            _cf = value;
+        }
+    }
+
     private double _reflectance;
     public double Reflectance
     {
@@ -132,6 +147,7 @@ public class MeshPart : MonoBehaviour
 
     void Start()
     {
+        _cf = new CFrame(transform.position)*transform.rotation;
         mr = GetComponent<MeshRenderer>();
         _textureID = "rbxassetid://" + mr.material.name.Split(" ")[0];
     }

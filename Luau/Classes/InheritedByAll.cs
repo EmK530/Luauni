@@ -2,7 +2,7 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
-public static class Instance
+public static class InheritedByAll
 {
     public static IEnumerator Clone(CallData dat)
     {
@@ -93,12 +93,6 @@ public static class Instance
             }
         }
         Luau.returnToProto(ref dat, new object[1] { Misc.TryGetType(find) });
-        yield break;
-    }
-    public static IEnumerator IsA(CallData dat) {
-        object[] inp = Luau.getAllArgs(ref dat);
-        GameObject obj = Misc.SafeGameObjectFromClass(dat.initiator.recentNameCalledRegister);
-        Luau.returnToProto(ref dat, new object[1] { obj.tag == (string)inp[1] });
         yield break;
     }
 }

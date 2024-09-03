@@ -97,7 +97,8 @@ public class Vector2
 
     public override string ToString()
     {
-        return X + ", " + Y;
+        return "Vector2";
+        //return X + ", " + Y;
     }
 
     // statics

@@ -1,19 +1,19 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Security.Permissions;
 using System.Xml;
 using Unity.VisualScripting;
 using UnityEngine;
 
-[Inspectable]
-public class VectorForce : MonoBehaviour
+public class Beam : MonoBehaviour
 {
     public static readonly List<Type> _inherits = new List<Type>()
     {
         typeof(Instance)
     };
 
-    public readonly string ClassName = "VectorForce";
+    public readonly string ClassName = "Beam";
 
     public string Name
     {
@@ -33,21 +33,26 @@ public class VectorForce : MonoBehaviour
         }
     }
 
-    [Inspectable]
-    public bool ApplyAtCenterOfMass = true;
+    LineRenderer lr;
 
-    [Inspectable] [SerializeField]
-    private UnityEngine.Vector3 _force;
+    double w0 = 0;
+    double w1 = 0;
 
-    public Vector3 Force {
-        get { return _force; }
-        set { _force = value; }
+    public double Width0
+    {
+        get { return w0; }
+        set { w0 = value; lr.startWidth = (float)value; }
+    }
+    public double Width1
+    {
+        get { return w1; }
+        set { w1 = value; lr.endWidth = (float)value; }
     }
 
     public static bool isObject = true;
 
-    void Update()
+    void Awake()
     {
-        transform.parent.gameObject.GetComponent<Rigidbody>().velocity = _force;
+        if (lr == null) { lr = GetComponent<LineRenderer>(); }
     }
 }

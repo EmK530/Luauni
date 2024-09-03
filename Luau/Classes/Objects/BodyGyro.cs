@@ -6,14 +6,14 @@ using Unity.VisualScripting;
 using UnityEngine;
 
 [Inspectable]
-public class VectorForce : MonoBehaviour
+public class BodyGyro : MonoBehaviour
 {
     public static readonly List<Type> _inherits = new List<Type>()
     {
         typeof(Instance)
     };
 
-    public readonly string ClassName = "VectorForce";
+    public readonly string ClassName = "BodyGyro";
 
     public string Name
     {
@@ -33,21 +33,29 @@ public class VectorForce : MonoBehaviour
         }
     }
 
-    [Inspectable]
-    public bool ApplyAtCenterOfMass = true;
+    public CFrame CFrame = new CFrame();
 
-    [Inspectable] [SerializeField]
-    private UnityEngine.Vector3 _force;
+    Rigidbody rb;
 
-    public Vector3 Force {
-        get { return _force; }
-        set { _force = value; }
-    }
+    /*[Inspectable] [SerializeField]
+    private Quaternion _cfrq {
+        get { return _cframe; }
+        set { _cframe = new CFrame(_cframe.p.X, _cframe.p.Y, _cframe.p.Z, value.x, value.y, value.z, value.w); }
+    }*/
 
     public static bool isObject = true;
 
-    void Update()
+    void Awake()
     {
-        transform.parent.gameObject.GetComponent<Rigidbody>().velocity = _force;
+        rb = GetComponent<Rigidbody>();
+        if (rb == null)
+        {
+            rb = gameObject.AddComponent<Rigidbody>();
+        }
+    }
+
+    void FixedUpdate()
+    {
+        rb.rotation = ((Quaternion)CFrame).normalized;
     }
 }

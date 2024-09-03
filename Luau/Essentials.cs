@@ -5,6 +5,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
+using System.Security.Cryptography;
 using UnityEngine;
 
 public class RegisterManager
@@ -84,6 +85,7 @@ public class SClosure
     public object[] args;
     public bool initiated = false;
     public bool complete = false;
+    public bool ended = false;
 
     public bool yielded = false;
     public YieldType type;
@@ -108,6 +110,7 @@ public class Closure
     public Proto p;
     public object[] upvals;
     public int loadedUps = 0;
+    public string hash = "";
 
     //custom
     public Luauni owner;
@@ -340,7 +343,7 @@ public static class Luau
 
 public static class ParseEssentials
 {
-    private static bool IsStandardFunction(MethodInfo methodInfo)
+    public static bool IsStandardFunction(MethodInfo methodInfo)
     {
         var compare = typeof(Globals.Standard).GetMethod("Invoke");
         if (compare.ReturnType != methodInfo.ReturnType)
@@ -581,7 +584,8 @@ public static class ParseEssentials
                     {
                         p = protos[fid],
                         upvals = new object[protos[fid].nups],
-                        owner = owner
+                        owner = owner,
+                        hash = owner.scriptHash
                     };
                     p.k[j] = newclosure;
                     break;
@@ -598,6 +602,17 @@ public static class ParseEssentials
 
 public static class Misc
 {
+    public static string GenerateHash()
+    {
+        var bytes = new byte[16];
+        using (var rng = new RNGCryptoServiceProvider())
+        {
+            rng.GetBytes(bytes);
+        }
+        string hash1 = BitConverter.ToString(bytes);
+        string hash2 = hash1.Replace("-", "").ToLower();
+        return hash2;
+    }
     public static IEnumerator ExecuteCoroutine(IEnumerator coroutine)
     {
         Stack<IEnumerator> stack = new Stack<IEnumerator>();

@@ -1,19 +1,16 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
-using System.Xml;
-using Unity.VisualScripting;
 using UnityEngine;
 
-[Inspectable]
-public class VectorForce : MonoBehaviour
+public class CFrameValue : MonoBehaviour
 {
     public static readonly List<Type> _inherits = new List<Type>()
     {
         typeof(Instance)
     };
 
-    public readonly string ClassName = "VectorForce";
+    public readonly string ClassName = "CFrameValue";
 
     public string Name
     {
@@ -33,21 +30,16 @@ public class VectorForce : MonoBehaviour
         }
     }
 
-    [Inspectable]
-    public bool ApplyAtCenterOfMass = true;
-
-    [Inspectable] [SerializeField]
-    private UnityEngine.Vector3 _force;
-
-    public Vector3 Force {
-        get { return _force; }
-        set { _force = value; }
+    [SerializeField]
+    private CFrame _value;
+    public CFrame Value
+    {
+        get { return _value; }
+        set
+        {
+            _value = value;
+        }
     }
 
     public static bool isObject = true;
-
-    void Update()
-    {
-        transform.parent.gameObject.GetComponent<Rigidbody>().velocity = _force;
-    }
 }

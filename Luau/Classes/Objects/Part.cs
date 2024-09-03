@@ -79,6 +79,15 @@ public class Part : MonoBehaviour
         }
     }
 
+    public bool CanCollide
+    {
+        get { return true; }
+        set
+        {
+            Logging.Warn("Support for this property is postponed.", "Part:CanCollide");
+        }
+    }
+
     public double CollisionGroupId
     {
         get { return 1d; }

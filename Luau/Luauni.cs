@@ -11,6 +11,7 @@ using TMPro;
 using System.Diagnostics;
 using System.Linq;
 using Unity.VisualScripting;
+using System.Collections;
 
 public struct LuauniConfig
 {
@@ -154,6 +155,8 @@ public class Luauni : MonoBehaviour
     private string[]? stringtable;
     private Proto[]? protos;
 
+    public readonly string scriptHash = Misc.GenerateHash();
+
     private int mainProtoId;
     private Proto mainProto;
 
@@ -161,7 +164,7 @@ public class Luauni : MonoBehaviour
 
     void Update()
     {
-        string gen = $"\n\n{targetScript} {(main.complete ? "(DEAD)" : (main.yielded ? "(YIELDED)" : ""))}";
+        string gen = $"\n\n{targetScript} {(main.complete ? (main.ended ? "(COMPLETE)" : "(CRASHED)") : (main.yielded ? "(YIELDED)" : ""))}";
         for(int i = 0; i < main.pL.Count; i++)
         {
             gen+=$"\nLayer {i + 1}: Proto {main.pL[i].bytecodeid}, Position: {main.iP[i] + 1} / {main.pL[i].sizecode}";
@@ -256,7 +259,8 @@ public class Luauni : MonoBehaviour
         {
             p = mainProto,
             upvals = new object[0],
-            owner = this
+            owner = this,
+            hash = scriptHash
         };
         main = new SClosure()
         {
@@ -268,6 +272,9 @@ public class Luauni : MonoBehaviour
         main.cL.Add(null);
         main.iP.Add(-1);
         ready = true;
+
+        Globals.Register(ref main);
+
         Logging.Print("Bytecode loaded for "+targetScript+", ready for execution.", "Luauni:Parse");
         TaskScheduler.instance.InitiateScript(ref main);
     }
@@ -619,7 +626,7 @@ public class Luauni : MonoBehaviour
                         }
                         else
                         {
-                            currentProto.registers[Luau.INSN_A(inst)] = Globals.Get(key);
+                            currentProto.registers[Luau.INSN_A(inst)] = Globals.Get(ref target, key);
                         }
                         break;
                     }
@@ -752,7 +759,7 @@ public class Luauni : MonoBehaviour
                             }
                             else
                             {
-                                Logging.Error($"{key} is not a valid member of {t.Name}", "Luauni:Step"); target.complete = true; yield break;
+                                Logging.Error($"{key} is not a valid member of {tgt}", "Luauni:Step"); target.complete = true; yield break;
                             }
                         }
                         else 
@@ -908,7 +915,10 @@ public class Luauni : MonoBehaviour
                     currentProto.registers[Luau.INSN_A(inst)] = currentProto.registers[Luau.INSN_B(inst)];
                     break;
                 case LuauOpcode.LOP_MINUS:
-                    currentProto.registers[Luau.INSN_A(inst)] = -(double)currentProto.registers[Luau.INSN_B(inst)];
+                    {
+                        dynamic rg1 = currentProto.registers[Luau.INSN_B(inst)];
+                        currentProto.registers[Luau.INSN_A(inst)] = -rg1;
+                    }
                     break;
                 case LuauOpcode.LOP_MOD:
                     {
@@ -971,6 +981,14 @@ public class Luauni : MonoBehaviour
                         MethodInfo get2 = t.GetMethod(key, search);
                         if (get2 != null)
                         {
+                            if (!ParseEssentials.IsStandardFunction(get2))
+                            {
+                                Logging.Error("Cannot namecall " + t + ":" + key + " because it does not match Globals.Standard", "Luauni:Parse:PP"); target.complete = true; yield break;
+                            }
+                            if (get2.ReturnType != typeof(IEnumerator))
+                            {
+                                Logging.Error("Cannot namecall " + t + ":" + key + " because of incompatible return type.", "Luauni:Step"); target.complete = true; yield break;
+                            }
                             currentProto.recentNameCalledRegister = currentProto.registers[b];
                             currentProto.registers[a] = (Globals.Standard)Delegate.CreateDelegate(typeof(Globals.Standard), get2.IsStatic ? null : reg, get2); ;
                         }
@@ -1014,7 +1032,8 @@ public class Luauni : MonoBehaviour
                     target.lCC = new Closure() {
                         p = currentProto.p[Luau.INSN_D(inst)],
                         upvals = new object[currentProto.p[Luau.INSN_D(inst)].nups],
-                        owner = target.source.owner
+                        owner = target.source.owner,
+                        hash = target.source.hash
                     };
                     currentProto.registers[Luau.INSN_A(inst)] = target.lCC;
                     break;
@@ -1054,7 +1073,7 @@ public class Luauni : MonoBehaviour
                     if (target.pL.Count == 1)
                     {
                         //Logging.Print("Main proto execution finished.", "Luauni:Step"); target.complete = true; yield break;
-                        target.complete = true; yield break;
+                        target.complete = true; target.ended = true; yield break;
                     } else
                     {
                         Logging.Debug($"Proto {currentProto.bytecodeid} is returning.", "Luauni:Step");
@@ -1071,7 +1090,6 @@ public class Luauni : MonoBehaviour
                         Proto edit = target.pL[target.cEL - 1];
                         for (int i = 0; i < returns; i++)
                         {
-                            Logging.Warn(startReg + i);
                             edit.registers[startReg + i] = i < (edit.expectedReturns == 0 ? returns : edit.expectedReturns) ? currentProto.registers[begin + i] : null;
                         }
                         currentProto = edit;
@@ -1084,7 +1102,7 @@ public class Luauni : MonoBehaviour
                 case LuauOpcode.LOP_SETGLOBAL:
                     {
                         string key = (string)currentProto.k[target.nextInst()];
-                        Globals.Set(key, currentProto.registers[Luau.INSN_A(inst)]);
+                        Globals.Set(ref target, key, currentProto.registers[Luau.INSN_A(inst)]);
                     }
                     break;
                 case LuauOpcode.LOP_SETLIST:
@@ -1110,7 +1128,7 @@ public class Luauni : MonoBehaviour
                         }
                         else
                         {
-                            int index = Convert.ToInt32((double)idx) - 1;
+                            int index = Convert.ToInt32((t != typeof(Int32)) ? (double)idx : idx) - 1;
                             object[] src = (object[])currentProto.registers[Luau.INSN_B(inst)];
                             int len = src.Length;
                             if (len < index + 1) {
@@ -1181,7 +1199,7 @@ public class Luauni : MonoBehaviour
                                 }
                                 else
                                 {
-                                    Logging.Error($"{key} is not a valid member of {t}", "Luauni:Step"); target.complete = true; yield break;
+                                    Logging.Error($"{key} is not a valid member of {tgt}", "Luauni:Step"); target.complete = true; yield break;
                                 }
                             }
                         }

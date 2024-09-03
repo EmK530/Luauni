@@ -3,17 +3,17 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
-public class Region3
+public class Ray
 {
-    public readonly string ClassName = "Region3";
+    public readonly string ClassName = "Ray";
 
-    public Vector3 min;
-    public Vector3 max;
+    public Vector3 Origin;
+    public Vector3 Direction;
 
-    public Region3(Vector3 min, Vector3 max)
+    public Ray(Vector3 Origin, Vector3 Direction)
     {
-        this.min = min;
-        this.max = max;
+        this.Origin = Origin;
+        this.Direction = Direction;
     }
 
     public static IEnumerator @new(CallData dat)
@@ -22,10 +22,10 @@ public class Region3
         switch(inp.Length)
         {
             case 2:
-                Luau.returnToProto(ref dat, new object[1] { new Region3((Vector3)inp[0], (Vector3)inp[1]) });
+                Luau.returnToProto(ref dat, new object[1] { new Ray((Vector3)inp[0], (Vector3)inp[1]) });
                 break;
             default:
-                Logging.Error($"No constructor found for Region3 with argument count {inp.Length}", "Luauni:Region3");
+                Logging.Error($"No constructor found for Ray with argument count {inp.Length}", "Luauni:Ray");
                 dat.initiator.globalErrored = true;
                 yield break;
         }
