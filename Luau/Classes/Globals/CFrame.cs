@@ -383,7 +383,7 @@ public class CFrame
     public static IEnumerator Lerp(CallData dat)
     {
         object[] inp = Luau.getAllArgs(ref dat);
-        CFrame cf1 = (CFrame)dat.initiator.recentNameCalledRegister;
+        CFrame cf1 = (CFrame)inp[0];
         CFrame cf2 = (CFrame)inp[1];
         double lerp = (double)inp[2];
         CFrame result = lerpinternal(cf1, cf2, lerp);

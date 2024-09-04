@@ -10,15 +10,15 @@ using UnityEngine;
 
 public class RegisterManager
 {
-    private object[] _registers;
+    private dynamic[] _registers;
     public byte stacktop = 0;
 
     public RegisterManager(int size)
     {
-        _registers = new object[size];
+        _registers = new dynamic[size];
     }
 
-    public object this[long index]
+    public dynamic this[long index]
     {
         get
         {
@@ -53,8 +53,8 @@ public class Proto
     public Proto[] p;
     public uint[] code;
     public uint[] codeentry;
-    public Dictionary<string, object> imports;
-    public object[] k;
+    public Dictionary<string, dynamic> imports;
+    public dynamic[] k;
     public RegisterManager registers;
     public uint callReg;
     public uint expectedReturns;
@@ -63,7 +63,7 @@ public class Proto
         get { return registers.stacktop; }
         set { registers.stacktop = value; }
     }
-    public object recentNameCalledRegister;
+    //public object recentNameCalledRegister; -- goodbye stupid feature :)
     public bool globalErrored = false;
 }
 
@@ -82,7 +82,7 @@ public class SClosure
     public List<int> iP = new List<int>();
     public List<Proto> pL = new List<Proto>();
     public List<Closure?> cL = new List<Closure?>();
-    public object[] args;
+    public dynamic[] args;
     public bool initiated = false;
     public bool complete = false;
     public bool ended = false;
@@ -108,7 +108,7 @@ public class SClosure
 public class Closure
 {
     public Proto p;
-    public object[] upvals;
+    public dynamic[] upvals;
     public int loadedUps = 0;
     public string hash = "";
 
@@ -125,7 +125,7 @@ public class UpvalREF
 public class NamedDict
 {
     public string name;
-    public Dictionary<string, object> dict;
+    public Dictionary<string, dynamic> dict;
 }
 
 public class CallData
@@ -139,48 +139,53 @@ public class CallData
 
 public class TableIterator
 {
-    private object[] table;
+    private dynamic[] table;
     private int index = 0;
 
-    public TableIterator(object[] table)
+    public TableIterator(dynamic[] table)
     {
         this.table = table;
         this.index = -1;
     }
 
-    public (bool, object[]) Get()
+    public (bool, dynamic[]) Get()
     {
         this.index++;
         if (this.index < this.table.Length)
         {
-            return (true, new object[2] { this.index + 1, this.table[this.index] });
+            return (true, new dynamic[2] { this.index + 1, this.table[this.index] });
         } else
         {
-            return (false, new object[0]);
+            return (false, new dynamic[0]);
         }
     }
 }
 
 public class ArrayIterator
 {
-    private Dictionary<string, object> array;
-    private Dictionary<string, object>.Enumerator e;
+    private Dictionary<string, dynamic> array;
+    private Dictionary<string, dynamic>.Enumerator e;
 
-    public ArrayIterator(Dictionary<string, object> array)
+    public ArrayIterator(Dictionary<string, dynamic> array)
     {
         this.array = array;
         e = array.GetEnumerator();
     }
+    public ArrayIterator(NamedDict array)
+    {
+        this.array = array.dict;
+        e = array.dict.GetEnumerator();
+    }
 
-    public (bool, object[]) Get()
+    public (bool, dynamic[]) Get()
     {
         if (e.MoveNext())
         {
-            return (true, new object[2] { e.Current.Key, e.Current.Value });
+            return (true, new dynamic[2] { e.Current.Key, e.Current.Value });
         }
         else
         {
-            return (false, new object[0]);
+            return (false, new dynamic[0]);
         }
     }
 }
@@ -193,7 +198,7 @@ public static class Luau
     public static uint INSN_C(uint insn) => (insn >> 24) & 0xFF;
     public static int INSN_D(uint insn) => (int)((int)insn >> 16);
     public static int INSN_E(uint insn) => (int)(insn >> 8);
-    public static bool EQUAL(object v1, object v2)
+    public static bool EQUAL(dynamic v1, dynamic v2)
     {
         if(v1 == null || v2 == null)
         {
@@ -201,53 +206,29 @@ public static class Luau
         }
         Type t1 = v1.GetType();
         Type t2 = v2.GetType();
-        if (t1 == typeof(double) && t2 == typeof(double))
-        {
-            return (double)v1 == (double)v2;
-        }
-        else if (t1 == typeof(string) && t2 == typeof(string))
-        {
-            return (string)v1 == (string)v2;
-        }
-        else if (t1 == typeof(double) || t2 == typeof(double))
-        {
-            double d1 = 0;
-            double d2 = 0;
-            if (t1 == typeof(double))
-            {
-                d1 = (double)v1;
-                if(double.TryParse((string)v2, out double c2)) { d2 = c2; } else { return false; }
-            } else
-            {
-                d2 = (double)v2;
-                if (double.TryParse((string)v1, out double c1)) { d1 = c1; } else { return false; }
-            }
-            return d1 == d2;
-        }
-        else
-        {
-            return v1 == v2;
-        }
+        if (t1 != t2)
+            return false;
+        return v1 == v2;
     }
-    public static bool LIKELY(object v1)
+    public static bool LIKELY(dynamic v1)
     {
         if (v1 == null)
             return false;
         Type t = v1.GetType();
         if (t == typeof(bool)) {
-            return (bool)v1;
+            return v1;
         }
         return true;
     }
-    public static object SAFEINDEX(object v1, string key)
+    public static dynamic SAFEINDEX(dynamic v1, string key)
     {
-        object inner = v1;
+        dynamic inner = v1;
         if (inner == null)
             return null;
         foreach (string k in key.Split("."))
         {
-            Dictionary<string, object> c1 = (Dictionary<string, object>)inner;
-            if (c1.TryGetValue(k, out object t1))
+            Dictionary<string, dynamic> c1 = (Dictionary<string, dynamic>)inner;
+            if (c1.TryGetValue(k, out dynamic t1))
             {
                 if (t1 == null)
                     return null;
@@ -260,7 +241,7 @@ public static class Luau
         }
         return inner;
     }
-    public static double safeNum(object inp)
+    public static double safeNum(dynamic inp)
     {
         if (inp == null)
         {
@@ -271,25 +252,25 @@ public static class Luau
             return (double)inp;
         }
     }
-    public static void returnToProto(ref CallData p, object[] args)
+    public static void returnToProto(ref CallData p, dynamic[] args)
     {
         uint tern = p.returns == 0 ? (uint)args.Length : p.returns - 1;
         for (uint i = 0; i < tern; i++)
         {
-            object tern2 = (i <= p.returns && i < args.Length) ? args[i] : null;
+            dynamic tern2 = (i <= p.returns && i < args.Length) ? args[i] : null;
             p.initiator.registers[p.funcRegister + i] = tern2;
         }
     }
-    public static object[] getAllArgs(ref CallData d)
+    public static dynamic[] getAllArgs(ref CallData d)
     {
-        object[] buf = new object[(d.args != 0 ? d.args - 1 : d.initiator.stacktop - d.funcRegister)];
+        dynamic[] buf = new dynamic[(d.args != 0 ? d.args - 1 : d.initiator.stacktop - d.funcRegister)];
         for (int i = 0; i < buf.Length; i++)
         {
             buf[i] = d.initiator.registers[d.funcRegister + i + 1];
         }
         return buf;
     }
-    public static string accurate_tostring(object arg, bool quotes = false)
+    public static string accurate_tostring(dynamic arg, bool quotes = false)
     {
         if (arg == null)
             return "nil";
@@ -298,12 +279,12 @@ public static class Luau
             return (bool)arg ? "true" : "false";
         if (tp == typeof(string))
             return quotes ? '"'+(string)arg+'"' : (string)arg;
-        if (tp == typeof(object[]))
+        if (tp == typeof(dynamic[]))
         {
-            object[] col = (object[])arg;
+            dynamic[] col = (dynamic[])arg;
             string build = "{";
             bool first = true;
-            foreach(object o in col)
+            foreach(dynamic o in col)
             {
                 if (!first)
                 {
@@ -361,7 +342,7 @@ public static class ParseEssentials
         p.flags = 0;
         p.codeentry = null;
         p.registers = new RegisterManager(256);
-        p.imports = new Dictionary<string, object>();
+        p.imports = new Dictionary<string, dynamic>();
         p.bytecodeid = i;
         p.maxstacksize = br.ReadByte();
         p.numparams = br.ReadByte();
@@ -377,7 +358,7 @@ public static class ParseEssentials
         }
         p.sizek = br.ReadVariableLen();
         Logging.Debug($"Loading {p.sizek} constants for Proto {i}", "Luauni:Parse:PP");
-        p.k = new object[p.sizek];
+        p.k = new dynamic[p.sizek];
         BindingFlags search = BindingFlags.Instance | BindingFlags.Static | BindingFlags.Public;
         int tables = 0;
         for (int j = 0; j < p.sizek; ++j)
@@ -407,7 +388,7 @@ public static class ParseEssentials
                     p.k[j] = rd;
                     break;
                 case LuauBytecodeTag.LBC_CONSTANT_TABLE:
-                    Dictionary<string, object> kt = new Dictionary<string, object>(); // key table
+                    Dictionary<string, dynamic> kt = new Dictionary<string, dynamic>(); // key table
                     int keys = br.ReadVariableLen();
                     for (int k = 0; k < keys; ++k)
                     {
@@ -438,7 +419,7 @@ public static class ParseEssentials
                         string importPath = string.Join('.', importPathParts);
                         Logging.Debug($"Resolving import constant: {importPath}", "Luauni:Parse:PP");
                         bool first = true;
-                        object current = null;
+                        dynamic current = null;
                         string last = "";
                         foreach(string index in importPathParts)
                         {
@@ -464,9 +445,9 @@ public static class ParseEssentials
                                 else
                                 {
                                     Type t = Misc.SafeType(current);
-                                    if (t == typeof(Dictionary<string, object>))
+                                    if (t == typeof(Dictionary<string, dynamic>))
                                     {
-                                        Dictionary<string, object> arr = (Dictionary<string, object>)current;
+                                        Dictionary<string, dynamic> arr = (Dictionary<string, dynamic>)current;
                                         current = arr[index];
                                     }
                                     else if (t == typeof(GameObject) || index == "camera")
@@ -485,7 +466,7 @@ public static class ParseEssentials
                                     else if (t == typeof(NamedDict))
                                     {
                                         NamedDict nd = (NamedDict)current;
-                                        if (nd.dict.TryGetValue(index, out object val))
+                                        if (nd.dict.TryGetValue(index, out dynamic val))
                                         {
                                             current = val;
                                         }
@@ -502,7 +483,7 @@ public static class ParseEssentials
                                         PropertyInfo test4 = t.GetProperty(index, search);
                                         if (test != null)
                                         {
-                                            object send = test.GetValue(test.IsStatic ? null : current);
+                                            dynamic send = test.GetValue(test.IsStatic ? null : current);
                                             current = send;
                                         }
                                         else if (test2 != null)
@@ -526,7 +507,7 @@ public static class ParseEssentials
                                         }
                                         else if (test4 != null)
                                         {
-                                            object send = test4.GetValue(current);
+                                            dynamic send = test4.GetValue(current);
                                             current = send;
                                         }
                                         else
@@ -583,7 +564,7 @@ public static class ParseEssentials
                     Closure newclosure = new Closure()
                     {
                         p = protos[fid],
-                        upvals = new object[protos[fid].nups],
+                        upvals = new dynamic[protos[fid].nups],
                         owner = owner,
                         hash = owner.scriptHash
                     };
@@ -641,7 +622,7 @@ public static class Misc
         }
     }
 
-    public static IEnumerator SummonClosure(Closure cl, object[] args)
+    public static IEnumerator SummonClosure(Closure cl, dynamic[] args)
     {
         SClosure create = new SClosure()
         {
@@ -654,7 +635,7 @@ public static class Misc
         yield return ExecuteCoroutine(TaskScheduler.instance.Spawn(create));
         yield break;
     }
-    public static void SummonClosureHybrid(Closure cl, object[] args)
+    public static void SummonClosureHybrid(Closure cl, dynamic[] args)
     {
         SClosure create = new SClosure()
         {
@@ -666,7 +647,7 @@ public static class Misc
         create.cL.Add(null);
         TaskScheduler.instance.SpawnHybrid(create);
     }
-    public static void SummonClosureTask(Closure cl, object[] args)
+    public static void SummonClosureTask(Closure cl, dynamic[] args)
     {
         SClosure create = new SClosure()
         {
@@ -694,20 +675,20 @@ public static class Misc
         closure.resumeAt = Time.realtimeSinceStartupAsDouble + duration;
         closure.yieldReturnTo = returns;
     }
-    public static string GetTypeName(object value)
+    public static string GetTypeName(dynamic value)
     {
         if(value == null)
         {
             return "nil";
         }
         Type t = value.GetType();
-        if(t == typeof(object[]) || t == typeof(NamedDict) || t == typeof(Dictionary<string, object>))
+        if(t == typeof(dynamic[]) || t == typeof(NamedDict) || t == typeof(Dictionary<string, dynamic>))
         {
             return "table";
         }
         return t.ToString();
     }
-    public static object TryGetType(Transform v2)
+    public static dynamic TryGetType(Transform v2)
     {
         Type type = GetTypeByName(v2.tag);
         if (type != null)
@@ -745,7 +726,7 @@ public static class Misc
     {
         return Type.GetType(name);
     }
-    public static Type SafeType(object input)
+    public static Type SafeType(dynamic input)
     {
         if (input is Type)
         {
@@ -756,7 +737,7 @@ public static class Misc
             return input.GetType();
         }
     }
-    public static GameObject SafeGameObjectFromClass(object input)
+    public static GameObject SafeGameObjectFromClass(dynamic input)
     {
         Type t = SafeType(input);
         if (t == typeof(GameObject))

@@ -140,7 +140,7 @@ public class Vector3
     public static IEnumerator Dot(CallData dat)
     {
         object[] inp = Luau.getAllArgs(ref dat);
-        Vector3 v1 = (Vector3)dat.initiator.recentNameCalledRegister;
+        Vector3 v1 = (Vector3)inp[0];
         Vector3 v2 = (Vector3)inp[1];
         Luau.returnToProto(ref dat, new object[1] { v1.X * v2.X + v1.Y * v2.Y + v1.Z * v2.Z });
         yield break;

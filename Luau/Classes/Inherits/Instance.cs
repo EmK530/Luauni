@@ -6,50 +6,53 @@ public static class Instance
 {
     public static IEnumerator Clone(CallData dat)
     {
-        GameObject toclone = Misc.SafeGameObjectFromClass(dat.initiator.recentNameCalledRegister);
+        dynamic[] inp = Luau.getAllArgs(ref dat);
+        GameObject toclone = Misc.SafeGameObjectFromClass(inp[0]);
         if(toclone != null)
         {
             GameObject src = ESS.Clone(toclone);
-            Luau.returnToProto(ref dat, new object[1] { Misc.TryGetType(src.transform) });
+            Luau.returnToProto(ref dat, new dynamic[1] { Misc.TryGetType(src.transform) });
         } else
         {
-            Logging.Error($"Internal error: Cannot perform Clone action on {dat.initiator.recentNameCalledRegister}", "Luauni:Step"); dat.initiator.globalErrored = true; yield break;
+            Logging.Error($"Internal error: Cannot perform Clone action on {inp[0]}", "Luauni:Step"); dat.initiator.globalErrored = true; yield break;
         }
         yield break;
     }
     public static IEnumerator Destroy(CallData dat)
     {
-        GameObject.DestroyImmediate(Misc.SafeGameObjectFromClass(dat.initiator.recentNameCalledRegister));
-        Luau.returnToProto(ref dat, new object[0]);
+        dynamic[] inp = Luau.getAllArgs(ref dat);
+        GameObject.DestroyImmediate(Misc.SafeGameObjectFromClass(inp[0]));
+        Luau.returnToProto(ref dat, new dynamic[0]);
         yield break;
     }
     public static IEnumerator FindFirstChild(CallData dat)
     {
-        object[] inp = Luau.getAllArgs(ref dat);
-        GameObject tosearch = Misc.SafeGameObjectFromClass(dat.initiator.recentNameCalledRegister);
+        dynamic[] inp = Luau.getAllArgs(ref dat);
+        GameObject tosearch = Misc.SafeGameObjectFromClass(inp[0]);
         string key = (string)inp[1];
         if (tosearch == null)
         {
-            Logging.Error($"Internal error: Cannot perform FindFirstChild action on {dat.initiator.recentNameCalledRegister}", "Luauni:Step"); dat.initiator.globalErrored = true; yield break;
+            Logging.Error($"Internal error: Cannot perform FindFirstChild action on {inp[0]}", "Luauni:Step"); dat.initiator.globalErrored = true; yield break;
         }
         Transform find = tosearch.transform.Find(key);
-        Luau.returnToProto(ref dat, new object[1] { find != null ? Misc.TryGetType(find) : null });
+        Luau.returnToProto(ref dat, new dynamic[1] { find != null ? Misc.TryGetType(find) : null });
         yield break;
     }
     public static IEnumerator GetChildren(CallData dat)
     {
-        GameObject tosearch = Misc.SafeGameObjectFromClass(dat.initiator.recentNameCalledRegister);
-        List<object> children = new List<object>();
+        dynamic[] inp = Luau.getAllArgs(ref dat);
+        GameObject tosearch = Misc.SafeGameObjectFromClass(inp[0]);
+        List<dynamic> children = new List<dynamic>();
         foreach (Transform child in tosearch.transform)
         {
             children.Add(Misc.TryGetType(child));
         }
-        object[] sendback = children.ToArray();
+        dynamic[] sendback = children.ToArray();
         children.Clear();
-        Luau.returnToProto(ref dat, new object[1] { sendback });
+        Luau.returnToProto(ref dat, new dynamic[1] { sendback });
         yield break;
     }
-    private static List<object> DescendantsCache = new List<object>();
+    private static List<dynamic> DescendantsCache = new List<dynamic>();
     private static void IterRecursive(Transform search)
     {
         DescendantsCache.Add(Misc.TryGetType(search));
@@ -60,24 +63,25 @@ public static class Instance
     }
     public static IEnumerator GetDescendants(CallData dat)
     {
-        GameObject tosearch = Misc.SafeGameObjectFromClass(dat.initiator.recentNameCalledRegister);
+        dynamic[] inp = Luau.getAllArgs(ref dat);
+        GameObject tosearch = Misc.SafeGameObjectFromClass(inp[0]);
         foreach(Transform child in tosearch.transform)
         {
             IterRecursive(child);
         }
-        object[] sendback = DescendantsCache.ToArray();
+        dynamic[] sendback = DescendantsCache.ToArray();
         DescendantsCache.Clear();
-        Luau.returnToProto(ref dat, new object[1] { sendback });
+        Luau.returnToProto(ref dat, new dynamic[1] { sendback });
         yield break;
     }
     public static IEnumerator WaitForChild(CallData dat)
     {
-        object[] inp = Luau.getAllArgs(ref dat);
-        GameObject tosearch = Misc.SafeGameObjectFromClass(dat.initiator.recentNameCalledRegister);
+        dynamic[] inp = Luau.getAllArgs(ref dat);
+        GameObject tosearch = Misc.SafeGameObjectFromClass(inp[0]);
         string key = (string)inp[1];
         if(tosearch == null)
         {
-            Logging.Error($"Internal error: Cannot perform WaitForChild action on {dat.initiator.recentNameCalledRegister}", "Luauni:Step"); dat.initiator.globalErrored = true; yield break;
+            Logging.Error($"Internal error: Cannot perform WaitForChild action on {inp[0]}", "Luauni:Step"); dat.initiator.globalErrored = true; yield break;
         }
         Transform find = tosearch.transform.Find(key);
         float st = Time.realtimeSinceStartup;
@@ -92,13 +96,20 @@ public static class Instance
                 alerted = true;
             }
         }
-        Luau.returnToProto(ref dat, new object[1] { Misc.TryGetType(find) });
+        Luau.returnToProto(ref dat, new dynamic[1] { Misc.TryGetType(find) });
+        yield break;
+    }
+    public static IEnumerator ClearAllChildren(CallData dat)
+    {
+        dynamic[] inp = Luau.getAllArgs(ref dat);
+        ESS.ClearAllChildren(Misc.SafeGameObjectFromClass(inp[0]));
+        Luau.returnToProto(ref dat, new dynamic[0]);
         yield break;
     }
     public static IEnumerator IsA(CallData dat) {
-        object[] inp = Luau.getAllArgs(ref dat);
-        GameObject obj = Misc.SafeGameObjectFromClass(dat.initiator.recentNameCalledRegister);
-        Luau.returnToProto(ref dat, new object[1] { obj.tag == (string)inp[1] });
+        dynamic[] inp = Luau.getAllArgs(ref dat);
+        GameObject obj = Misc.SafeGameObjectFromClass(inp[0]);
+        Luau.returnToProto(ref dat, new dynamic[1] { obj.tag == (string)inp[1] });
         yield break;
     }
 }

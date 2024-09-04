@@ -21,19 +21,13 @@ public class Folder : MonoBehaviour
         }
     }
 
-    public object Parent
+    public dynamic Parent
     {
         get { return Misc.TryGetType(transform.parent); }
         set
         {
             transform.SetParent(Misc.SafeGameObjectFromClass(value).transform);
         }
-    }
-
-    public static IEnumerator ClearAllChildren(CallData dat) {
-        ESS.ClearAllChildren(Misc.SafeGameObjectFromClass(dat.initiator.recentNameCalledRegister));
-        Luau.returnToProto(ref dat, new object[0]);
-        yield break;
     }
 
     public RBXScriptSignal ChildAdded = new RBXScriptSignal();

@@ -137,12 +137,6 @@ public class MeshPart : MonoBehaviour
         }
     }
 
-    public IEnumerator IsA(CallData dat) {
-        object[] inp = Luau.getAllArgs(ref dat);
-        Luau.returnToProto(ref dat, new object[1] { (string)inp[0] == "MeshPart" });
-        yield break;
-    }
-
     public static bool isObject = true;
 
     void Start()

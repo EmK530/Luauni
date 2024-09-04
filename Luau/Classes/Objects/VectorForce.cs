@@ -46,8 +46,8 @@ public class VectorForce : MonoBehaviour
 
     public static bool isObject = true;
 
-    void Update()
+    void FixedUpdate()
     {
-        transform.parent.gameObject.GetComponent<Rigidbody>().velocity = _force;
+        transform.parent.gameObject.GetComponent<Rigidbody>().AddForce(_force);
     }
 }

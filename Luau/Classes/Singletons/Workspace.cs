@@ -52,7 +52,6 @@ public class Workspace : MonoBehaviour
     
     public static IEnumerator FindPartOnRayWithIgnoreList(CallData dat) {
         object[] inp = Luau.getAllArgs(ref dat);
-
         Logging.Debug("FindPartOnRayWithIgnoreList call: " + inp.ToString(), "Workspace");
         Ray ray = (Ray)inp[1];
         RaycastHit hit;

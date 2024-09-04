@@ -47,10 +47,10 @@ public class BodyGyro : MonoBehaviour
 
     void Awake()
     {
-        rb = GetComponent<Rigidbody>();
+        rb = transform.parent.GetComponent<Rigidbody>();
         if (rb == null)
         {
-            rb = gameObject.AddComponent<Rigidbody>();
+            rb = transform.parent.gameObject.AddComponent<Rigidbody>();
         }
     }
 
