@@ -6,88 +6,66 @@ using UnityEngine;
 public class Vector2
 {
     public readonly string ClassName = "Vector2";
+    public static bool isObject = false;
 
-    public double X, Y;
-    public readonly double Magnitude;
-    public double magnitude
-    {
-        get { return Magnitude; }
-    }
-    public Vector2 unit { get { return normalize(this); } }
+    public readonly float X, Y;
+    public override string ToString() => $"{X}, {Y}";
 
-    public Vector2(double x = 0, double y = 0)
+    public Vector2(float x = 0, float y = 0)
     {
-        this.X = x;
-        this.Y = y;
-        Magnitude = calcMagnitude(this);
+        X = x;
+        Y = y;
     }
 
-    // opperator overloads
-
-    public static Vector2 operator -(Vector2 v)
+    public Vector2(params float[] coords)
     {
-        return new Vector2(-v.X, -v.Y);
+        X = coords.Length > 0 ? coords[0] : 0;
+        Y = coords.Length > 1 ? coords[1] : 0;
     }
 
-    public static Vector2 operator *(float k, Vector2 a)
+    public float Magnitude => (float)Math.Sqrt(X * X + Y * Y);
+    public Vector2 Unit => this / Magnitude;
+
+    private delegate Vector2 Operator(Vector2 a, Vector2 b);
+
+    private static Vector2 UpcastFloatOp(Vector2 vec, float num, Operator upcast)
     {
-        return new Vector2(a.X * k, a.Y * k);
+        var numVec = new Vector2(num, num);
+        return upcast(vec, numVec);
     }
 
-    public static Vector2 operator *(Vector2 a, float k)
+    private static Vector2 UpcastFloatOp(float num, Vector2 vec, Operator upcast)
     {
-        return new Vector2(a.X * k, a.Y * k);
+        var numVec = new Vector2(num, num);
+        return upcast(numVec, vec);
     }
 
-    public static Vector2 operator /(Vector2 a, float k)
-    {
-        return new Vector2(a.X / k, a.Y / k);
-    }
+    private static readonly Operator add = new Operator((a, b) => new Vector2(a.X + b.X, a.Y + b.Y));
+    private static readonly Operator sub = new Operator((a, b) => new Vector2(a.X - b.X, a.Y - b.Y));
+    private static readonly Operator mul = new Operator((a, b) => new Vector2(a.X * b.X, a.Y * b.Y));
+    private static readonly Operator div = new Operator((a, b) => new Vector2(a.X / b.X, a.Y / b.Y));
 
-    public static Vector2 operator +(Vector2 a, Vector2 b)
-    {
-        return new Vector2(a.X + b.X, a.Y + b.Y);
-    }
+    public static Vector2 operator +(Vector2 a, Vector2 b) => add(a, b);
+    public static Vector2 operator +(Vector2 v, float n) => UpcastFloatOp(v, n, add);
+    public static Vector2 operator +(float n, Vector2 v) => UpcastFloatOp(n, v, add);
 
-    public static Vector2 operator -(Vector2 a, Vector2 b)
-    {
-        return new Vector2(a.X - b.X, a.Y - b.Y);
-    }
+    public static Vector2 operator -(Vector2 a, Vector2 b) => sub(a, b);
+    public static Vector2 operator -(Vector2 v, float n) => UpcastFloatOp(v, n, sub);
+    public static Vector2 operator -(float n, Vector2 v) => UpcastFloatOp(n, v, sub);
 
-    public static Vector2 operator *(Vector2 a, Vector2 b)
-    {
-        return new Vector2(a.X * b.X, a.Y * b.Y);
-    }
+    public static Vector2 operator *(Vector2 a, Vector2 b) => mul(a, b);
+    public static Vector2 operator *(Vector2 v, float n) => UpcastFloatOp(v, n, mul);
+    public static Vector2 operator *(float n, Vector2 v) => UpcastFloatOp(n, v, mul);
 
-    public static Vector2 operator *(Quaternion rotation, Vector2 point)
-    {
-        float num = rotation.x * 2f;
-        float num2 = rotation.y * 2f;
-        float num3 = rotation.z * 2f;
-        float num4 = rotation.x * num;
-        float num5 = rotation.y * num2;
-        float num6 = rotation.z * num3;
-        float num7 = rotation.x * num2;
-        float num8 = rotation.x * num3;
-        float num9 = rotation.y * num3;
-        float num10 = rotation.w * num;
-        float num11 = rotation.w * num2;
-        float num12 = rotation.w * num3;
-        Vector2 result = new Vector2(
-            (1f - (num5 + num6)) * point.X + (num7 - num12) * point.Y + (num8 + num11),
-            (num7 + num12) * point.X + (1f - (num4 + num6)) * point.Y + (num9 - num10)
-        );
-        return result;
-    }
+    public static Vector2 operator /(Vector2 a, Vector2 b) => div(a, b);
+    public static Vector2 operator /(Vector2 v, float n) => UpcastFloatOp(v, n, div);
+    public static Vector2 operator /(float n, Vector2 v) => UpcastFloatOp(n, v, div);
 
-    public static Vector2 operator /(Vector2 a, Vector2 b)
-    {
-        return new Vector2(a.X / b.X, a.Y / b.Y);
-    }
+    public static Vector2 operator -(Vector2 v) => new Vector2(-v.X, -v.Y);
 
     public static implicit operator UnityEngine.Vector2(Vector2 v)
     {
-        return new UnityEngine.Vector2(Convert.ToSingle(v.X), Convert.ToSingle(v.Y));
+        return new UnityEngine.Vector3(v.X, v.Y);
     }
 
     public static implicit operator Vector2(UnityEngine.Vector2 v)
@@ -95,62 +73,57 @@ public class Vector2
         return new Vector2(v.x, v.y);
     }
 
-    public override string ToString()
+    public static Vector2 zero => new Vector2(0, 0);
+    public static Vector2 one => new Vector2(1, 1);
+
+    public static Vector2 xAxis => new Vector2(1, 0);
+    public static Vector2 yAxis => new Vector2(0, 1);
+
+    public float Dot(Vector2 other) => (X * other.X) + (Y * other.Y);
+    public Vector2 Cross(Vector2 other) => new Vector2(X * other.Y, Y * other.X);
+
+    public Vector2 Lerp(Vector2 other, float t)
     {
-        return "Vector2";
-        //return X + ", " + Y;
+        return this + (other - this) * t;
     }
 
-    // statics
-
-    private static double calcMagnitude(Vector2 v)
+    public override int GetHashCode()
     {
-        return Math.Sqrt(Dot(v, v));
+        int hash = X.GetHashCode()
+                 ^ Y.GetHashCode();
+
+        return hash;
     }
 
-    private static Vector2 normalize(Vector2 v)
+    public override bool Equals(object obj)
     {
-        double m = calcMagnitude(v);
-        double nx = v.X / m, ny = v.Y / m;
-        return new Vector2(nx, ny);
-    }
+        if (!(obj is Vector2 other))
+            return false;
 
-    public static double Dot(Vector2 a, Vector2 b)
-    {
-        return a.X * b.X + a.Y * b.Y;
-    }
+        if (!X.Equals(other.X))
+            return false;
 
-    public static Vector2 Cross(Vector2 a, Vector2 b)
-    {
-        return new Vector2(
-            a.X - a.Y, b.Y - b.X
-        );
-    }
+        if (!Y.Equals(other.Y))
+            return false;
 
-    // methods
-
-    public Vector2 Lerp(Vector2 b, float t)
-    {
-        return (1 - t) * this + t * b;
+        return true;
     }
 
     public static IEnumerator @new(CallData dat)
     {
-        object[] inp = Luau.getAllArgs(ref dat);
-        switch(inp.Length)
+        dynamic[] inp = Luau.getAllArgs(ref dat);
+        switch (inp.Length)
         {
             case 0:
                 Luau.returnToProto(ref dat, new object[1] { new Vector2() });
                 break;
             case 1:
-                Luau.returnToProto(ref dat, new object[1] { new Vector2((double)inp[0]) });
+                Luau.returnToProto(ref dat, new object[1] { new Vector2((float)inp[0]) });
                 break;
             default:
-                Luau.returnToProto(ref dat, new object[1] { new Vector2((double)inp[0], (double)inp[1]) });
+                Luau.returnToProto(ref dat, new object[1] { new Vector2((float)inp[0], (float)inp[1]) });
                 break;
         }
         yield break;
     }
-
-    public static bool isObject = false;
 }

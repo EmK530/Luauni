@@ -58,15 +58,18 @@ public class Part : MonoBehaviour
     {
         get
         {
-            CFrame cf = new CFrame(transform.position);
-            cf *= transform.rotation;
+            UnityEngine.Vector3 vec = transform.rotation.eulerAngles;
+            CFrame cf = new CFrame(transform.position) * CFrame._angles(
+                vec.x * Mathf.Deg2Rad,
+                vec.y * Mathf.Deg2Rad,
+                vec.z * Mathf.Deg2Rad
+            );
             return cf;
         }
         set
         {
-            transform.position = new UnityEngine.Vector3((float)value.X, (float)value.Y, (float)value.Z);
-            double[] l = CFrame.quaternionFromCFrame(value);
-            transform.rotation = new Quaternion((float)l[0], (float)l[1], (float)l[2], (float)l[3]);
+            transform.position = value.Position;
+            transform.rotation = new Quaternion(value);
         }
     }
 

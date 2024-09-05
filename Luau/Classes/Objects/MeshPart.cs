@@ -51,18 +51,22 @@ public class MeshPart : MonoBehaviour
         }
     }
 
-    private CFrame _cf;
     public CFrame CFrame
     {
         get
         {
-            return _cf;
+            UnityEngine.Vector3 vec = transform.rotation.eulerAngles;
+            CFrame cf = new CFrame(transform.position) * CFrame._angles(
+                vec.x * Mathf.Deg2Rad,
+                vec.y * Mathf.Deg2Rad,
+                vec.z * Mathf.Deg2Rad
+            );
+            return cf;
         }
         set
         {
             transform.position = value.Position;
-            transform.rotation = value.Rotation;
-            _cf = value;
+            transform.rotation = new Quaternion(value);
         }
     }
 
@@ -141,7 +145,6 @@ public class MeshPart : MonoBehaviour
 
     void Start()
     {
-        _cf = new CFrame(transform.position)*transform.rotation;
         mr = GetComponent<MeshRenderer>();
         _textureID = "rbxassetid://" + mr.material.name.Split(" ")[0];
     }

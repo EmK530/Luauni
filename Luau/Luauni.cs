@@ -42,7 +42,7 @@ public class Luauni : MonoBehaviour
         };
         if (!File.Exists("config.json"))
         {
-            File.WriteAllText("config.json",JsonConvert.SerializeObject(cfg, Formatting.Indented));
+            File.WriteAllText("config.json",JsonConvert.SerializeObject(cfg, Newtonsoft.Json.Formatting.Indented));
         } else
         {
             Dictionary<string, dynamic> cfg2 = JsonConvert.DeserializeObject<Dictionary<string, dynamic>>(File.ReadAllText("config.json"));
@@ -75,7 +75,7 @@ public class Luauni : MonoBehaviour
                     }
                 }
             }
-            File.WriteAllText("config.json", JsonConvert.SerializeObject(cfg, Formatting.Indented));
+            File.WriteAllText("config.json", JsonConvert.SerializeObject(cfg, Newtonsoft.Json.Formatting.Indented));
         }
 
         if (!Globals.IsInitialized())

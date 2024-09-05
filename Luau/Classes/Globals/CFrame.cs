@@ -1,461 +1,465 @@
 using System;
 using System.Collections;
-using System.Collections.Generic;
-using System.Security.Cryptography;
 using UnityEngine;
-using static UnityEngine.GraphicsBuffer;
 
 public class CFrame
 {
     public readonly string ClassName = "CFrame";
+    public static bool isObject = false;
 
-    private double m11 = 1, m12 = 0, m13 = 0, m14 = 0;
-    private double m21 = 0, m22 = 1, m23 = 0, m24 = 0;
-    private double m31 = 0, m32 = 0, m33 = 1, m34 = 0;
-    private const double m41 = 0, m42 = 0, m43 = 0, m44 = 1;
+    private readonly float m14, m24, m34;
 
-    public Vector3 Position
+    private readonly float m11 = 1, m12, m13;
+    private readonly float m21, m22 = 1, m23;
+    private readonly float m31, m32, m33 = 1;
+
+    private const float m41 = 0, m42 = 0, m43 = 0, m44 = 1;
+
+    public float X => m14;
+    public float Y => m24;
+    public float Z => m34;
+
+    public Vector3 Position => new Vector3(X, Y, Z);
+    public Vector3 p => new Vector3(X, Y, Z);
+    public CFrame Rotation => (this - Position);
+
+    public Vector3 XVector => new Vector3(m11, m21, m31);
+    public Vector3 YVector => new Vector3(m12, m22, m32);
+    public Vector3 ZVector => new Vector3(m13, m23, m33);
+
+    public Vector3 RightVector => XVector;
+    public Vector3 rightVector => XVector;
+    public Vector3 UpVector => YVector;
+    public Vector3 upVector => YVector;
+    public Vector3 LookVector => -ZVector;
+    public Vector3 lookVector => -ZVector;
+
+    public Vector3 ColumnX => new Vector3(m11, m12, m13);
+    public Vector3 ColumnY => new Vector3(m21, m22, m23);
+    public Vector3 ColumnZ => new Vector3(m31, m32, m33);
+
+    public static readonly CFrame identity = new CFrame();
+
+    public override int GetHashCode()
     {
-        get { return new Vector3(X, Y, Z); }
-        set { X = value.X; Y = value.Y; Z = value.Z; }
+        var components = GetComponents();
+        int hashCode = 0;
+
+        foreach (float component in components)
+            hashCode ^= component.GetHashCode();
+
+        return hashCode;
     }
-    public Quaternion Rotation
+
+    public override bool Equals(object obj)
     {
-        get { return (Quaternion)this; }
+        if (!(obj is CFrame other))
+            return false;
+
+        var compA = GetComponents();
+        var compB = other.GetComponents();
+
+        for (int i = 0; i < 12; i++)
+        {
+            float a = compA[i],
+                  b = compB[i];
+
+            if (a.Equals(b))
+                continue;
+
+            return false;
+        }
+
+        return true;
     }
 
-    // modification - make x,y,z not readonly
-    public double X = 0, Y = 0, Z = 0;
-    public readonly Vector3 p = new Vector3(0, 0, 0);
-    public readonly Vector3 lookVector = new Vector3(0, 0, -1);
-    public readonly Vector3 rightVector = new Vector3(1, 0, 0);
-    public readonly Vector3 upVector = new Vector3(0, 1, 0);
-
-    private static Vector3 RIGHT = new Vector3(1, 0, 0);
-    private static Vector3 UP = new Vector3(0, 1, 0);
-    private static Vector3 BACK = new Vector3(0, 0, 1);
-
-    // constructors
+    public CFrame()
+    {
+        m14 = 0;
+        m24 = 0;
+        m34 = 0;
+    }
 
     public CFrame(Vector3 pos)
     {
         m14 = pos.X;
         m24 = pos.Y;
         m34 = pos.Z;
-        X = m14; Y = m24; Z = m34;
-        p = new Vector3(m14, m24, m34);
-        lookVector = new Vector3(-m13, -m23, -m33);
-        rightVector = new Vector3(m11, m21, m31);
-        upVector = new Vector3(m12, m22, m32);
+    }
+
+    public CFrame(float nx = 0, float ny = 0, float nz = 0)
+    {
+        m14 = nx;
+        m24 = ny;
+        m34 = nz;
     }
 
     public CFrame(Vector3 eye, Vector3 look)
     {
-        Vector3 zAxis = (eye - look).unit;
-        Vector3 xAxis = Vector3.Cross(UP, zAxis);
-        Vector3 yAxis = Vector3.Cross(zAxis, xAxis);
+        Vector3 zAxis = (eye - look).Unit,
+                xAxis = Vector3.yAxis.Cross(zAxis),
+                yAxis = zAxis.Cross(xAxis);
+
         if (xAxis.Magnitude == 0)
         {
-            if (zAxis.Y < 0)
-            {
-                xAxis = new Vector3(0, 0, -1);
-                yAxis = new Vector3(1, 0, 0);
-                zAxis = new Vector3(0, -1, 0);
-            }
-            else
-            {
-                xAxis = new Vector3(0, 0, 1);
-                yAxis = new Vector3(1, 0, 0);
-                zAxis = new Vector3(0, 1, 0);
-            }
+            xAxis = Vector3.zAxis;
+            yAxis = Vector3.xAxis;
+            zAxis = Vector3.yAxis;
         }
+
         m11 = xAxis.X; m12 = yAxis.X; m13 = zAxis.X; m14 = eye.X;
         m21 = xAxis.Y; m22 = yAxis.Y; m23 = zAxis.Y; m24 = eye.Y;
         m31 = xAxis.Z; m32 = yAxis.Z; m33 = zAxis.Z; m34 = eye.Z;
-        X = m14; Y = m24; Z = m34;
-        p = new Vector3(m14, m24, m34);
-        lookVector = new Vector3(-m13, -m23, -m33);
-        rightVector = new Vector3(m11, m21, m31);
-        upVector = new Vector3(m12, m22, m32);
     }
 
-    public CFrame(double nx = 0, double ny = 0, double nz = 0)
+    public CFrame(float nx, float ny, float nz, float i, float j, float k, float w)
     {
+        float ii = i * i,
+              jj = j * j,
+              kk = k * k;
+
         m14 = nx;
         m24 = ny;
         m34 = nz;
-        X = m14; Y = m24; Z = m34;
-        p = new Vector3(m14, m24, m34);
-        lookVector = new Vector3(-m13, -m23, -m33);
-        rightVector = new Vector3(m11, m21, m31);
-        upVector = new Vector3(m12, m22, m32);
-    }
 
-    public CFrame(double nx, double ny, double nz, double i, double j, double k, double w)
-    {
-        m14 = nx;
-        m24 = ny;
-        m34 = nz;
-        m11 = 1 - 2 * Math.Pow(j, 2) - 2 * Math.Pow(k, 2);
+        m11 = 1 - 2 * jj - 2 * kk;
         m12 = 2 * (i * j - k * w);
         m13 = 2 * (i * k + j * w);
+
         m21 = 2 * (i * j + k * w);
-        m22 = 1 - 2 * Math.Pow(i, 2) - 2 * Math.Pow(k, 2);
+        m22 = 1 - 2 * ii - 2 * kk;
         m23 = 2 * (j * k - i * w);
+
         m31 = 2 * (i * k - j * w);
         m32 = 2 * (j * k + i * w);
-        m33 = 1 - 2 * Math.Pow(i, 2) - 2 * Math.Pow(j, 2);
-        X = m14; Y = m24; Z = m34;
-        p = new Vector3(m14, m24, m34);
-        lookVector = new Vector3(-m13, -m23, -m33);
-        rightVector = new Vector3(m11, m21, m31);
-        upVector = new Vector3(m12, m22, m32);
+        m33 = 1 - 2 * ii - 2 * jj;
     }
 
-    public CFrame(double n14, double n24, double n34, double n11, double n12, double n13, double n21, double n22, double n23, double n31, double n32, double n33)
+    public CFrame(float n14, float n24, float n34, float n11, float n12, float n13, float n21, float n22, float n23, float n31, float n32, float n33)
     {
         m14 = n14; m24 = n24; m34 = n34;
         m11 = n11; m12 = n12; m13 = n13;
         m21 = n21; m22 = n22; m23 = n23;
         m31 = n31; m32 = n32; m33 = n33;
-        X = m14; Y = m24; Z = m34;
-        p = new Vector3(m14, m24, m34);
-        lookVector = new Vector3(-m13, -m23, -m33);
-        rightVector = new Vector3(m11, m21, m31);
-        upVector = new Vector3(m12, m22, m32);
     }
 
-    // opperator overloads
+    public CFrame(params float[] comp)
+    {
+        m14 = comp[0]; m24 = comp[1]; m34 = comp[2];
+        m11 = comp[3]; m12 = comp[4]; m13 = comp[5];
+        m21 = comp[6]; m22 = comp[7]; m23 = comp[8];
+        m31 = comp[9]; m32 = comp[10]; m33 = comp[11];
+    }
+
+    public CFrame(Vector3 pos, Vector3 vX, Vector3 vY, Vector3 vZ = null)
+    {
+        if (vZ == null)
+            vZ = vX.Cross(vY);
+        m14 = pos.X; m24 = pos.Y; m34 = pos.Z;
+        m11 = vX.X; m12 = vX.Y; m13 = vX.Z;
+        m21 = vY.X; m22 = vY.Y; m23 = vY.Z;
+        m31 = vZ.X; m32 = vZ.Y; m33 = vZ.Z;
+    }
 
     public static CFrame operator +(CFrame a, Vector3 b)
     {
-        double[] ac = a.components();
-        double x = ac[0], y = ac[1], z = ac[2], m11 = ac[3], m12 = ac[4], m13 = ac[5], m21 = ac[6], m22 = ac[7], m23 = ac[8], m31 = ac[9], m32 = ac[10], m33 = ac[11];
+        float[] ac = a.GetComponents();
+        float x = ac[0], y = ac[1], z = ac[2],
+              m11 = ac[3], m12 = ac[4], m13 = ac[5],
+              m21 = ac[6], m22 = ac[7], m23 = ac[8],
+              m31 = ac[9], m32 = ac[10], m33 = ac[11];
         return new CFrame(x + b.X, y + b.Y, z + b.Z, m11, m12, m13, m21, m22, m23, m31, m32, m33);
     }
 
     public static CFrame operator -(CFrame a, Vector3 b)
     {
-        double[] ac = a.components();
-        double x = ac[0], y = ac[1], z = ac[2], m11 = ac[3], m12 = ac[4], m13 = ac[5], m21 = ac[6], m22 = ac[7], m23 = ac[8], m31 = ac[9], m32 = ac[10], m33 = ac[11];
+        float[] ac = a.GetComponents();
+        float x = ac[0], y = ac[1], z = ac[2],
+              m11 = ac[3], m12 = ac[4], m13 = ac[5],
+              m21 = ac[6], m22 = ac[7], m23 = ac[8],
+              m31 = ac[9], m32 = ac[10], m33 = ac[11];
         return new CFrame(x - b.X, y - b.Y, z - b.Z, m11, m12, m13, m21, m22, m23, m31, m32, m33);
     }
 
     public static Vector3 operator *(CFrame a, Vector3 b)
     {
-        double[] ac = a.components();
-        double x = ac[0], y = ac[1], z = ac[2], m11 = ac[3], m12 = ac[4], m13 = ac[5], m21 = ac[6], m22 = ac[7], m23 = ac[8], m31 = ac[9], m32 = ac[10], m33 = ac[11];
-        Vector3 right = new Vector3(m11, m21, m31);
-        Vector3 up = new Vector3(m12, m22, m32);
-        Vector3 back = new Vector3(m13, m23, m33);
-        return a.p + b.X * right + b.Y * up + b.Z * back;
+        float[] ac = a.GetComponents();
+        float m11 = ac[3], m12 = ac[4], m13 = ac[5],
+              m21 = ac[6], m22 = ac[7], m23 = ac[8],
+              m31 = ac[9], m32 = ac[10], m33 = ac[11];
+        var up = new Vector3(m12, m22, m32);
+        var back = new Vector3(m13, m23, m33);
+        var right = new Vector3(m11, m21, m31);
+        return a.Position + b.X * right + b.Y * up + b.Z * back;
     }
 
     public static CFrame operator *(CFrame a, CFrame b)
     {
-        double[] ac = a.components();
-        double[] bc = b.components();
-        double a14 = ac[0], a24 = ac[1], a34 = ac[2], a11 = ac[3], a12 = ac[4], a13 = ac[5], a21 = ac[6], a22 = ac[7], a23 = ac[8], a31 = ac[9], a32 = ac[10], a33 = ac[11];
-        double b14 = bc[0], b24 = bc[1], b34 = bc[2], b11 = bc[3], b12 = bc[4], b13 = bc[5], b21 = bc[6], b22 = bc[7], b23 = bc[8], b31 = bc[9], b32 = bc[10], b33 = bc[11];
-        double n11 = a11 * b11 + a12 * b21 + a13 * b31 + a14 * m41;
-        double n12 = a11 * b12 + a12 * b22 + a13 * b32 + a14 * m42;
-        double n13 = a11 * b13 + a12 * b23 + a13 * b33 + a14 * m43;
-        double n14 = a11 * b14 + a12 * b24 + a13 * b34 + a14 * m44;
-        double n21 = a21 * b11 + a22 * b21 + a23 * b31 + a24 * m41;
-        double n22 = a21 * b12 + a22 * b22 + a23 * b32 + a24 * m42;
-        double n23 = a21 * b13 + a22 * b23 + a23 * b33 + a24 * m43;
-        double n24 = a21 * b14 + a22 * b24 + a23 * b34 + a24 * m44;
-        double n31 = a31 * b11 + a32 * b21 + a33 * b31 + a34 * m41;
-        double n32 = a31 * b12 + a32 * b22 + a33 * b32 + a34 * m42;
-        double n33 = a31 * b13 + a32 * b23 + a33 * b33 + a34 * m43;
-        double n34 = a31 * b14 + a32 * b24 + a33 * b34 + a34 * m44;
-        double n41 = m41 * b11 + m42 * b21 + m43 * b31 + m44 * m41;
-        double n42 = m41 * b12 + m42 * b22 + m43 * b32 + m44 * m42;
-        double n43 = m41 * b13 + m42 * b23 + m43 * b33 + m44 * m43;
-        double n44 = m41 * b14 + m42 * b24 + m43 * b34 + m44 * m44;
+        float[] ac = a.GetComponents();
+        float[] bc = b.GetComponents();
+        float a14 = ac[0], a24 = ac[1], a34 = ac[2],
+              a11 = ac[3], a12 = ac[4], a13 = ac[5],
+              a21 = ac[6], a22 = ac[7], a23 = ac[8],
+              a31 = ac[9], a32 = ac[10], a33 = ac[11];
+        float b14 = bc[0], b24 = bc[1], b34 = bc[2],
+              b11 = bc[3], b12 = bc[4], b13 = bc[5],
+              b21 = bc[6], b22 = bc[7], b23 = bc[8],
+              b31 = bc[9], b32 = bc[10], b33 = bc[11];
+        float n11 = a11 * b11 + a12 * b21 + a13 * b31 + a14 * m41;
+        float n12 = a11 * b12 + a12 * b22 + a13 * b32 + a14 * m42;
+        float n13 = a11 * b13 + a12 * b23 + a13 * b33 + a14 * m43;
+        float n14 = a11 * b14 + a12 * b24 + a13 * b34 + a14 * m44;
+        float n21 = a21 * b11 + a22 * b21 + a23 * b31 + a24 * m41;
+        float n22 = a21 * b12 + a22 * b22 + a23 * b32 + a24 * m42;
+        float n23 = a21 * b13 + a22 * b23 + a23 * b33 + a24 * m43;
+        float n24 = a21 * b14 + a22 * b24 + a23 * b34 + a24 * m44;
+        float n31 = a31 * b11 + a32 * b21 + a33 * b31 + a34 * m41;
+        float n32 = a31 * b12 + a32 * b22 + a33 * b32 + a34 * m42;
+        float n33 = a31 * b13 + a32 * b23 + a33 * b33 + a34 * m43;
+        float n34 = a31 * b14 + a32 * b24 + a33 * b34 + a34 * m44;
         return new CFrame(n14, n24, n34, n11, n12, n13, n21, n22, n23, n31, n32, n33);
-    }
-
-    public static CFrame operator *(CFrame a, Quaternion b)
-    {
-        double i,k,j,w;
-        i = b.x; k = b.y; j = b.z; w = b.w;
-        double n11 = 1 - 2 * Math.Pow(j, 2) - 2 * Math.Pow(k, 2);
-        double n12 = 2 * (i * j - k * w);
-        double n13 = 2 * (i * k + j * w);
-        double n21 = 2 * (i * j + k * w);
-        double n22 = 1 - 2 * Math.Pow(i, 2) - 2 * Math.Pow(k, 2);
-        double n23 = 2 * (j * k - i * w);
-        double n31 = 2 * (i * k - j * w);
-        double n32 = 2 * (j * k + i * w);
-        double n33 = 1 - 2 * Math.Pow(i, 2) - 2 * Math.Pow(j, 2);
-        return new CFrame(a.p, new Vector3(-n13, -n23, -n33));
-    }
-
-    public static implicit operator CFrame(Vector3 v)
-    {
-        return new CFrame(v.X, v.Y, v.Z);
-    }
-
-    public static implicit operator Quaternion(CFrame c)
-    {
-        double[] q = quaternionFromCFrame(c);
-        return new Quaternion((float)q[1],(float)q[2],(float)q[3],(float)q[0]);
     }
 
     public override string ToString()
     {
-        return "CFrame";
-        //return System.String.Join(", ", components());
+        return string.Join(", ", GetComponents());
     }
 
-    // private static functions
-
-    private static Vector3 vectorAxisAngle(Vector3 n, Vector3 v, double t)
+    private static Vector3 VectorAxisAngle(Vector3 vec, Vector3 axis, float theta)
     {
-        n = n.unit;
-        return v * Math.Cos(t) + Vector3._dot(v, n) * n * (1 - Math.Cos(t)) + Vector3.Cross(n, v) * Math.Sin(t);
+        Vector3 unit = vec.Unit;
+        float cosAng = (float)Math.Cos(theta);
+        float sinAng = (float)Math.Sin(theta);
+        return axis * cosAng + axis._dot(unit) * unit * (1 - cosAng) + unit.Cross(axis) * sinAng;
     }
 
-    private static double getDeterminant(CFrame a)
+    public CFrame Inverse()
     {
-        double[] ac = a.components();
-        double a14 = ac[0], a24 = ac[1], a34 = ac[2], a11 = ac[3], a12 = ac[4], a13 = ac[5], a21 = ac[6], a22 = ac[7], a23 = ac[8], a31 = ac[9], a32 = ac[10], a33 = ac[11];
-        double det = (a11 * a22 * a33 * m44 + a11 * a23 * a34 * m42 + a11 * a24 * a32 * m43
-                + a12 * a21 * a34 * m43 + a12 * a23 * a31 * m44 + a12 * a24 * a33 * m41
-                + a13 * a21 * a32 * m44 + a13 * a22 * a34 * m41 + a13 * a24 * a31 * m42
-                + a14 * a21 * a33 * m42 + a14 * a22 * a31 * m43 + a14 * a23 * a32 * m41
-                - a11 * a22 * a34 * m43 - a11 * a23 * a32 * m44 - a11 * a24 * a33 * m42
-                - a12 * a21 * a33 * m44 - a12 * a23 * a34 * m41 - a12 * a24 * a31 * m43
-                - a13 * a21 * a34 * m42 - a13 * a22 * a31 * m44 - a13 * a24 * a32 * m41
-                - a14 * a21 * a32 * m43 - a14 * a22 * a33 * m41 - a14 * a23 * a31 * m42);
-        return det;
-    }
-
-    private static CFrame invert4x4(CFrame a)
-    {
-        double[] ac = a.components();
-        double a14 = ac[0], a24 = ac[1], a34 = ac[2], a11 = ac[3], a12 = ac[4], a13 = ac[5], a21 = ac[6], a22 = ac[7], a23 = ac[8], a31 = ac[9], a32 = ac[10], a33 = ac[11];
-        double det = getDeterminant(a);
-        if (det == 0) { return a; }
-        double b11 = (a22 * a33 * m44 + a23 * a34 * m42 + a24 * a32 * m43 - a22 * a34 * m43 - a23 * a32 * m44 - a24 * a33 * m42) / det;
-        double b12 = (a12 * a34 * m43 + a13 * a32 * m44 + a14 * a33 * m42 - a12 * a33 * m44 - a13 * a34 * m42 - a14 * a32 * m43) / det;
-        double b13 = (a12 * a23 * m44 + a13 * a24 * m42 + a14 * a22 * m43 - a12 * a24 * m43 - a13 * a22 * m44 - a14 * a23 * m42) / det;
-        double b14 = (a12 * a24 * a33 + a13 * a22 * a34 + a14 * a23 * a32 - a12 * a23 * a34 - a13 * a24 * a32 - a14 * a22 * a33) / det;
-        double b21 = (a21 * a34 * m43 + a23 * a31 * m44 + a24 * a33 * m41 - a21 * a33 * m44 - a23 * a34 * m41 - a24 * a31 * m43) / det;
-        double b22 = (a11 * a33 * m44 + a13 * a34 * m41 + a14 * a31 * m43 - a11 * a34 * m43 - a13 * a31 * m44 - a14 * a33 * m41) / det;
-        double b23 = (a11 * a24 * m43 + a13 * a21 * m44 + a14 * a23 * m41 - a11 * a23 * m44 - a13 * a24 * m41 - a14 * a21 * m43) / det;
-        double b24 = (a11 * a23 * a34 + a13 * a24 * a31 + a14 * a21 * a33 - a11 * a24 * a33 - a13 * a21 * a34 - a14 * a23 * a31) / det;
-        double b31 = (a21 * a32 * m44 + a22 * a34 * m41 + a24 * a31 * m42 - a21 * a34 * m42 - a22 * a31 * m44 - a24 * a32 * m41) / det;
-        double b32 = (a11 * a34 * m42 + a12 * a31 * m44 + a14 * a32 * m41 - a11 * a32 * m44 - a12 * a34 * m41 - a14 * a31 * m42) / det;
-        double b33 = (a11 * a22 * m44 + a12 * a24 * m41 + a14 * a21 * m42 - a11 * a24 * m42 - a12 * a21 * m44 - a14 * a22 * m41) / det;
-        double b34 = (a11 * a24 * a32 + a12 * a21 * a34 + a14 * a22 * a31 - a11 * a22 * a34 - a12 * a24 * a31 - a14 * a21 * a32) / det;
-        double b41 = (a21 * a33 * m42 + a22 * a31 * m43 + a23 * a32 * m41 - a21 * a32 * m43 - a22 * a33 * m41 - a23 * a31 * m42) / det;
-        double b42 = (a11 * a32 * m43 + a12 * a33 * m41 + a13 * a31 * m42 - a11 * a33 * m42 - a12 * a31 * m43 - a13 * a32 * m41) / det;
-        double b43 = (a11 * a23 * m42 + a12 * a21 * m43 + a13 * a22 * m41 - a11 * a22 * m43 - a12 * a23 * m41 - a13 * a21 * m42) / det;
-        double b44 = (a11 * a22 * a33 + a12 * a23 * a31 + a13 * a21 * a32 - a11 * a23 * a32 - a12 * a21 * a33 - a13 * a22 * a31) / det;
+        float[] ac = GetComponents();
+        float a14 = ac[0], a24 = ac[1], a34 = ac[2],
+              a11 = ac[3], a12 = ac[4], a13 = ac[5],
+              a21 = ac[6], a22 = ac[7], a23 = ac[8],
+              a31 = ac[9], a32 = ac[10], a33 = ac[11];
+        float det = (a11 * a22 * a33 * m44 + a11 * a23 * a34 * m42 + a11 * a24 * a32 * m43
+                    + a12 * a21 * a34 * m43 + a12 * a23 * a31 * m44 + a12 * a24 * a33 * m41
+                    + a13 * a21 * a32 * m44 + a13 * a22 * a34 * m41 + a13 * a24 * a31 * m42
+                    + a14 * a21 * a33 * m42 + a14 * a22 * a31 * m43 + a14 * a23 * a32 * m41
+                    - a11 * a22 * a34 * m43 - a11 * a23 * a32 * m44 - a11 * a24 * a33 * m42
+                    - a12 * a21 * a33 * m44 - a12 * a23 * a34 * m41 - a12 * a24 * a31 * m43
+                    - a13 * a21 * a34 * m42 - a13 * a22 * a31 * m44 - a13 * a24 * a32 * m41
+                    - a14 * a21 * a32 * m43 - a14 * a22 * a33 * m41 - a14 * a23 * a31 * m42);
+        if (det == 0)
+            return this;
+        float b11 = (a22 * a33 * m44 + a23 * a34 * m42 + a24 * a32 * m43 - a22 * a34 * m43 - a23 * a32 * m44 - a24 * a33 * m42) / det;
+        float b12 = (a12 * a34 * m43 + a13 * a32 * m44 + a14 * a33 * m42 - a12 * a33 * m44 - a13 * a34 * m42 - a14 * a32 * m43) / det;
+        float b13 = (a12 * a23 * m44 + a13 * a24 * m42 + a14 * a22 * m43 - a12 * a24 * m43 - a13 * a22 * m44 - a14 * a23 * m42) / det;
+        float b14 = (a12 * a24 * a33 + a13 * a22 * a34 + a14 * a23 * a32 - a12 * a23 * a34 - a13 * a24 * a32 - a14 * a22 * a33) / det;
+        float b21 = (a21 * a34 * m43 + a23 * a31 * m44 + a24 * a33 * m41 - a21 * a33 * m44 - a23 * a34 * m41 - a24 * a31 * m43) / det;
+        float b22 = (a11 * a33 * m44 + a13 * a34 * m41 + a14 * a31 * m43 - a11 * a34 * m43 - a13 * a31 * m44 - a14 * a33 * m41) / det;
+        float b23 = (a11 * a24 * m43 + a13 * a21 * m44 + a14 * a23 * m41 - a11 * a23 * m44 - a13 * a24 * m41 - a14 * a21 * m43) / det;
+        float b24 = (a11 * a23 * a34 + a13 * a24 * a31 + a14 * a21 * a33 - a11 * a24 * a33 - a13 * a21 * a34 - a14 * a23 * a31) / det;
+        float b31 = (a21 * a32 * m44 + a22 * a34 * m41 + a24 * a31 * m42 - a21 * a34 * m42 - a22 * a31 * m44 - a24 * a32 * m41) / det;
+        float b32 = (a11 * a34 * m42 + a12 * a31 * m44 + a14 * a32 * m41 - a11 * a32 * m44 - a12 * a34 * m41 - a14 * a31 * m42) / det;
+        float b33 = (a11 * a22 * m44 + a12 * a24 * m41 + a14 * a21 * m42 - a11 * a24 * m42 - a12 * a21 * m44 - a14 * a22 * m41) / det;
+        float b34 = (a11 * a24 * a32 + a12 * a21 * a34 + a14 * a22 * a31 - a11 * a22 * a34 - a12 * a24 * a31 - a14 * a21 * a32) / det;
         return new CFrame(b14, b24, b34, b11, b12, b13, b21, b22, b23, b31, b32, b33);
     }
 
-    public static double[] quaternionFromCFrame(CFrame a)
+    public static CFrame FromAxisAngle(Vector3 axis, float theta)
     {
-        double[] ac = a.components();
-        double mx = ac[0], my = ac[1], mz = ac[2], m11 = ac[3], m12 = ac[4], m13 = ac[5], m21 = ac[6], m22 = ac[7], m23 = ac[8], m31 = ac[9], m32 = ac[10], m33 = ac[11];
-        double trace = m11 + m22 + m33;
-        double w = 1, i = 0, j = 0, k = 0;
-        if (trace > 0)
-        {
-            double s = Math.Sqrt(1 + trace);
-            double r = 0.5f / s;
-            w = s * 0.5f; i = (m32 - m23) * r; j = (m13 - m31) * r; k = (m21 - m12) * r;
-        }
-        else
-        {
-            double big = Math.Max(Math.Max(m11, m22), m33);
-            if (big == m11)
-            {
-                double s = Math.Sqrt(1 + m11 - m22 - m33);
-                double r = 0.5f / s;
-                w = (m32 - m23) * r; i = 0.5f * s; j = (m21 + m12) * r; k = (m13 + m31) * r;
-            }
-            else if (big == m22)
-            {
-                double s = Math.Sqrt(1 - m11 + m22 - m33);
-                double r = 0.5f / s;
-                w = (m13 - m31) * r; i = (m21 + m12) * r; j = 0.5f * s; k = (m32 + m23) * r;
-            }
-            else if (big == m33)
-            {
-                double s = Math.Sqrt(1 - m11 - m22 + m33);
-                double r = 0.5f / s;
-                w = (m21 - m12) * r; i = (m13 + m31) * r; j = (m32 + m23) * r; k = 0.5f * s;
-            }
-        }
-        return new double[] { w, i, j, k };
-    }
-
-    private static CFrame lerpinternal(CFrame a, CFrame b, double t)
-    {
-        CFrame cf = a.inverse() * b;
-        double[] q = quaternionFromCFrame(cf);
-        double w = q[0], i = q[1], j = q[2], k = q[3];
-        double theta = Math.Acos(w) * 2;
-        Vector3 v = new Vector3(i, j, k);
-        Vector3 p = a.p.Lerp(b.p, t);
-        if (theta != 0)
-        {
-            CFrame r = a * fromAxisAngle(v, theta * t);
-            return (r - r.p) + p;
-        }
-        else
-        {
-            return (a - a.p) + p;
-        }
-    }
-
-    // public static functions
-
-    public static CFrame fromAxisAngle(Vector3 axis, double theta)
-    {
-        Vector3 r = vectorAxisAngle(axis, RIGHT, theta);
-        Vector3 u = vectorAxisAngle(axis, UP, theta);
-        Vector3 b = vectorAxisAngle(axis, BACK, theta);
+        Vector3 r = VectorAxisAngle(axis, Vector3.xAxis, theta),
+                u = VectorAxisAngle(axis, Vector3.yAxis, theta),
+                b = VectorAxisAngle(axis, Vector3.zAxis, theta);
         return new CFrame(0, 0, 0, r.X, u.X, b.X, r.Y, u.Y, b.Y, r.Z, u.Z, b.Z);
     }
 
-    public static CFrame _angles(double x, double y, double z)
+    public static CFrame FromEulerAnglesXYZ(float x, float y, float z)
     {
-        CFrame cfx = fromAxisAngle(RIGHT, x);
-        CFrame cfy = fromAxisAngle(UP, y);
-        CFrame cfz = fromAxisAngle(BACK, z);
+        CFrame cfx = FromAxisAngle(Vector3.xAxis, x),
+               cfy = FromAxisAngle(Vector3.yAxis, y),
+               cfz = FromAxisAngle(Vector3.zAxis, z);
         return cfx * cfy * cfz;
     }
-    public static IEnumerator Angles(CallData dat)
+
+    public static CFrame FromEulerAnglesXYZ(params float[] angles)
     {
-        object[] inp = Luau.getAllArgs(ref dat);
-        double x = 0d; double y = 0d; double z = 0d;
-        switch (inp.Length)
-        {
-            case 1:
-                x = Convert.ToDouble(inp[0]);
-                break;
-            case 2:
-                x = Convert.ToDouble(inp[0]); y = Convert.ToDouble(inp[1]);
-                break;
-            case 3:
-                x = Convert.ToDouble(inp[0]); y = Convert.ToDouble(inp[1]); z = Convert.ToDouble(inp[2]);
-                break;
-        }
-        CFrame cfx = fromAxisAngle(RIGHT, x);
-        CFrame cfy = fromAxisAngle(UP, y);
-        CFrame cfz = fromAxisAngle(BACK, z);
-        Luau.returnToProto(ref dat, new object[1] { cfx * cfy * cfz });
-        yield break;
+        float x = angles[0],
+              y = angles[1],
+              z = angles[2];
+        return FromEulerAnglesXYZ(x, y, z);
     }
 
-    public static CFrame fromEulerAnglesXYZ(double x, double y, double z)
+    public static CFrame _angles(float x, float y, float z) => FromEulerAnglesXYZ(x, y, z);
+    public static CFrame _angles(params float[] angles) => FromEulerAnglesXYZ(angles);
+
+    public CFrame _lerp(CFrame other, float t)
     {
-        return _angles(x, y, z);
+        if (t == 0f)
+            return this;
+        else if (t == 1f)
+            return other;
+        var q1 = new Quaternion(this);
+        var q2 = new Quaternion(other);
+        CFrame rot = q1.Slerp(q2, t).ToCFrame();
+        Vector3 pos = Position.Lerp(other.Position, t);
+        return new CFrame(pos) * rot;
     }
 
-    public static Vector3 ToVector(CFrame c)
-    {
-        return new Vector3(c.X,c.Y,c.Z);
-    }
-
-    public static void SetCFrame(Transform t, CFrame c)
-    {
-        double[] q = quaternionFromCFrame(c);
-        t.SetPositionAndRotation(new UnityEngine.Vector3((float)c.X,(float)c.Y,(float)c.Z),new Quaternion((float)q[1],(float)q[2],(float)q[3],(float)q[0]));
-    }
-
-    // methods
-
-    public CFrame inverse()
-    {
-        return invert4x4(this);
-    }
-
-    public CFrame _lerp(CFrame cf2, double t)
-    {
-        return lerpinternal(this, cf2, t);
-    }
     public static IEnumerator Lerp(CallData dat)
     {
         object[] inp = Luau.getAllArgs(ref dat);
         CFrame cf1 = (CFrame)inp[0];
         CFrame cf2 = (CFrame)inp[1];
         double lerp = (double)inp[2];
-        CFrame result = lerpinternal(cf1, cf2, lerp);
-        Luau.returnToProto(ref dat, new object[1] { result });
+        if (lerp == 0f)
+            Luau.returnToProto(ref dat, new object[1] { cf1 });
+        else if (lerp == 1f)
+            Luau.returnToProto(ref dat, new object[1] { cf2 });
+        var q1 = new Quaternion(cf1);
+        var q2 = new Quaternion(cf2);
+        CFrame rot = q1.Slerp(q2, (float)lerp).ToCFrame();
+        Vector3 pos = cf1.Position.Lerp(cf2.Position, (float)lerp);
+        Luau.returnToProto(ref dat, new object[1] { new CFrame(pos) * rot });
         yield break;
     }
 
-    public CFrame toWorldSpace(CFrame cf2)
+    public CFrame ToWorldSpace(CFrame cf2)
     {
         return this * cf2;
     }
 
-    public CFrame toObjectSpace(CFrame cf2)
+    public CFrame ToObjectSpace(CFrame other)
     {
-        return this.inverse() * cf2;
+        return Inverse() * other;
     }
 
-    public Vector3 pointToWorldSpace(Vector3 v)
+    public Vector3 PointToWorldSpace(Vector3 v)
     {
         return this * v;
     }
 
-    public Vector3 pointToObjectSpace(Vector3 v)
+    public Vector3 PointToObjectSpace(Vector3 v)
     {
-        return this.inverse() * v;
+        return Inverse() * v;
     }
 
-    public Vector3 vectorToWorldSpace(Vector3 v)
+    public Vector3 VectorToWorldSpace(Vector3 v)
     {
-        return (this - this.p) * v;
+        return (this - Position) * v;
     }
 
-    public Vector3 vectorToObjectSpace(Vector3 v)
+    public Vector3 VectorToObjectSpace(Vector3 v)
     {
-        return (this - this.p).inverse() * v;
+        return (this - Position).Inverse() * v;
     }
 
-    public double[] components()
+    public float[] GetComponents()
     {
-        return new double[] { m14, m24, m34, m11, m12, m13, m21, m22, m23, m31, m32, m33 };
+        return new float[]
+        {
+                m14, m24, m34,
+                m11, m12, m13,
+                m21, m22, m23,
+                m31, m32, m33
+        };
     }
 
-    public double[] toEulerAnglesXYZ()
+    public EulerAngles ToEulerAngles() => new EulerAngles
     {
-        double x = Math.Atan2(-m23, m33);
-        double y = Math.Asin(m13);
-        double z = Math.Atan2(-m12, m11);
-        return new double[] { x, y, z };
+        Yaw = (float)Math.Asin(m13),
+        Pitch = (float)Math.Atan2(-m23, m33),
+        Roll = (float)Math.Atan2(-m12, m11),
+    };
+
+    [Obsolete]
+    public float[] ToEulerAnglesXYZ()
+    {
+        var result = ToEulerAngles();
+
+        return new float[]
+        {
+                result.Pitch,
+                result.Yaw,
+                result.Roll
+        };
+    }
+
+    public bool IsAxisAligned()
+    {
+        var tests = new float[3]
+        {
+                XVector._dot(Vector3.xAxis),
+                YVector._dot(Vector3.yAxis),
+                ZVector._dot(Vector3.zAxis)
+        };
+
+        foreach (var test in tests)
+        {
+            float dot = Math.Abs(test);
+
+            if (dot.FuzzyEquals(1))
+                continue;
+
+            if (dot.FuzzyEquals(0))
+                continue;
+
+            return false;
+        }
+
+        return true;
+    }
+
+    private static bool IsLegalOrientId(int orientId)
+    {
+        int xOrientId = (orientId / 6) % 3;
+        int yOrientId = orientId % 3;
+
+        return (xOrientId != yOrientId);
+    }
+
+    public static IEnumerator Angles(CallData dat)
+    {
+        dynamic[] inp = Luau.getAllArgs(ref dat);
+        float x = 0f; float y = 0f; float z = 0f;
+        switch (inp.Length)
+        {
+            case 1:
+                x = Convert.ToSingle(inp[0]);
+                break;
+            case 2:
+                x = Convert.ToSingle(inp[0]); y = Convert.ToSingle(inp[1]);
+                break;
+            case 3:
+                x = Convert.ToSingle(inp[0]); y = Convert.ToSingle(inp[1]); z = Convert.ToSingle(inp[2]);
+                break;
+        }
+        CFrame t = FromEulerAnglesXYZ(x, y, z);
+        Luau.returnToProto(ref dat, new object[1] { t });
+        yield break;
     }
 
     public static IEnumerator @new(CallData dat)
     {
-        object[] inp = Luau.getAllArgs(ref dat);
+        dynamic[] inp = Luau.getAllArgs(ref dat);
         switch (inp.Length)
         {
             case 0:
                 Luau.returnToProto(ref dat, new object[1] { new CFrame() });
                 yield break;
             case 1:
-                Luau.returnToProto(ref dat, new object[1] { new CFrame((Vector3)inp[0]) });
+                Luau.returnToProto(ref dat, new object[1] { new CFrame(inp[0]) });
                 yield break;
             case 2:
-                Luau.returnToProto(ref dat, new object[1] { new CFrame((Vector3)inp[0], (Vector3)inp[1]) });
+                Luau.returnToProto(ref dat, new object[1] { new CFrame(inp[0], inp[1]) });
                 yield break;
             case 3:
-                Luau.returnToProto(ref dat, new object[1] { new CFrame((double)inp[0], (double)inp[1], (double)inp[2]) });
+                Luau.returnToProto(ref dat, new object[1] { new CFrame((float)inp[0], (float)inp[1], (float)inp[2]) });
                 yield break;
             case 7:
-                Luau.returnToProto(ref dat, new object[1] { new CFrame((double)inp[0], (double)inp[1], (double)inp[2], (double)inp[3], (double)inp[4], (double)inp[5], (double)inp[6]) });
+                Luau.returnToProto(ref dat, new object[1] { new CFrame((float)inp[0], (float)inp[1], (float)inp[2], (float)inp[3], (float)inp[4], (float)inp[5], (float)inp[6]) });
                 yield break;
             case 11:
-                Luau.returnToProto(ref dat, new object[1] { new CFrame((double)inp[0], (double)inp[1], (double)inp[2], (double)inp[3], (double)inp[4], (double)inp[5], (double)inp[6], (double)inp[7], (double)inp[8], (double)inp[9], (double)inp[10], (double)inp[11]) });
+                Luau.returnToProto(ref dat, new object[1] { new CFrame((float)inp[0], (float)inp[1], (float)inp[2], (float)inp[3], (float)inp[4], (float)inp[5], (float)inp[6], (float)inp[7], (float)inp[8], (float)inp[9], (float)inp[10], (float)inp[11]) });
                 yield break;
             default:
                 Logging.Error($"No constructor found for CFrame with argument count {inp.Length}", "Luauni:CFrame");
@@ -463,6 +467,248 @@ public class CFrame
                 yield break;
         }
     }
+}
 
-    public static bool isObject = false;
+public class Quaternion
+{
+    public readonly float X, Y, Z, W;
+    public override string ToString() => $"{X}, {Y}, {Z}, {W}";
+
+    public static implicit operator UnityEngine.Quaternion(Quaternion obj)
+    {
+        return new UnityEngine.Quaternion(obj.X, obj.Y, obj.Z, obj.W);
+    }
+
+    public Quaternion(UnityEngine.Quaternion quat)
+    {
+        X = quat.x;
+        Y = quat.y;
+        Z = quat.z;
+        W = quat.w;
+    }
+
+    public float Magnitude
+    {
+        get
+        {
+            float squared = Dot(this);
+            double magnitude = Math.Sqrt(squared);
+            return (float)magnitude;
+        }
+    }
+
+    public Quaternion(float x, float y, float z, float w)
+    {
+        X = x;
+        Y = y;
+        Z = z;
+        W = w;
+    }
+
+    public Quaternion(Vector3 qv, float qw)
+    {
+        X = qv.X;
+        Y = qv.Y;
+        Z = qv.Z;
+        W = qw;
+    }
+
+    public Quaternion(CFrame cf)
+    {
+        float[] ac = cf.GetComponents();
+        float m11 = ac[3], m12 = ac[4], m13 = ac[5],
+              m21 = ac[6], m22 = ac[7], m23 = ac[8],
+              m31 = ac[9], m32 = ac[10], m33 = ac[11];
+        float trace = m11 + m22 + m33;
+        if (trace > 0)
+        {
+            float s = (float)Math.Sqrt(1 + trace);
+            float r = 0.5f / s;
+            W = s * 0.5f;
+            X = (m32 - m23) * r;
+            Y = (m13 - m31) * r;
+            Z = (m21 - m12) * r;
+        }
+        else
+        {
+            float big = Math.Max(Math.Max(m11, m22), m33);
+            if (big == m11)
+            {
+                float s = (float)Math.Sqrt(1 + m11 - m22 - m33);
+                float r = 0.5f / s;
+                W = (m32 - m23) * r;
+                X = 0.5f * s;
+                Y = (m21 + m12) * r;
+                Z = (m13 + m31) * r;
+            }
+            else if (big == m22)
+            {
+                float s = (float)Math.Sqrt(1 - m11 + m22 - m33);
+                float r = 0.5f / s;
+                W = (m13 - m31) * r;
+                X = (m21 + m12) * r;
+                Y = 0.5f * s;
+                Z = (m32 + m23) * r;
+            }
+            else if (big == m33)
+            {
+                float s = (float)Math.Sqrt(1 - m11 - m22 + m33);
+                float r = 0.5f / s;
+                W = (m21 - m12) * r;
+                X = (m13 + m31) * r;
+                Y = (m32 + m23) * r;
+                Z = 0.5f * s;
+            }
+        }
+    }
+
+    public float Dot(Quaternion other)
+    {
+        return (X * other.X) + (Y * other.Y) + (Z * other.Z) + (W * other.W);
+    }
+
+    public Quaternion Lerp(Quaternion other, float alpha)
+    {
+        Quaternion result = this * (1.0f - alpha) + other * alpha;
+        return result / result.Magnitude;
+    }
+
+    public Quaternion Slerp(Quaternion other, float alpha)
+    {
+        float cosAng = Dot(other);
+        if (cosAng < 0)
+        {
+            other = -other;
+            cosAng = -cosAng;
+        }
+        double ang = Math.Acos(cosAng);
+        if (ang >= 0.05f)
+        {
+            float scale0 = (float)Math.Sin((1.0f - alpha) * ang);
+            float scale1 = (float)Math.Sin(alpha * ang);
+            float denom = (float)Math.Sin(ang);
+
+            return ((this * scale0) + (other * scale1)) / denom;
+        }
+        else
+        {
+            return Lerp(other, alpha);
+        }
+    }
+
+    public CFrame ToCFrame()
+    {
+        float xc = X * 2f,
+              yc = Y * 2f,
+              zc = Z * 2f;
+        float xx = X * xc,
+              xy = X * yc,
+              xz = X * zc;
+        float wx = W * xc,
+              wy = W * yc,
+              wz = W * zc;
+        float yy = Y * yc,
+              yz = Y * zc,
+              zz = Z * zc;
+        return new CFrame
+        (
+            0, 0, 0,
+            1f - (yy + zz),
+            xy - wz,
+            xz + wy,
+            xy + wz,
+            1f - (xx + zz),
+            yz - wx,
+            xz - wy,
+            yz + wx,
+            1f - (xx + yy)
+        );
+    }
+
+    public static Quaternion operator +(Quaternion a, Quaternion b)
+    {
+        return new Quaternion(a.X + b.X, a.Y + b.Y, a.Z + b.Z, a.W + b.W);
+    }
+
+    public static Quaternion operator -(Quaternion a, Quaternion b)
+    {
+        return new Quaternion(a.X - b.X, a.Y - b.Y, a.Z - b.Z, a.W - b.W);
+    }
+
+    public static Quaternion operator *(Quaternion a, float f)
+    {
+        return new Quaternion(a.X * f, a.Y * f, a.Z * f, a.W * f);
+    }
+
+    public static Quaternion operator /(Quaternion a, float f)
+    {
+        return new Quaternion(a.X / f, a.Y / f, a.Z / f, a.W / f);
+    }
+
+    public static Quaternion operator -(Quaternion a)
+    {
+        return new Quaternion(-a.X, -a.Y, -a.Z, -a.W);
+    }
+
+    public static Quaternion operator *(Quaternion a, Quaternion b)
+    {
+        Vector3 v1 = new Vector3(a.X, a.Y, a.Z),
+                v2 = new Vector3(b.X, b.Y, b.Z);
+        float s1 = a.W,
+              s2 = b.W;
+        return new Quaternion(s1 * v2 + s2 * v1 + v1.Cross(v2), s1 * s2 - v1._dot(v2));
+    }
+
+    public EulerAngles ToEulerAngles()
+    {
+        var angles = new EulerAngles();
+        double sinr_cosp = 2 * (W * X + Y * Z);
+        double cosr_cosp = 1 - 2 * (X * X + Y * Y);
+        angles.Roll = (float)Math.Atan2(sinr_cosp, cosr_cosp);
+        double sinp = 2 * (W * Y - Z * X);
+        angles.Pitch = (float)Math.Asin(sinp);
+        double siny_cosp = 2 * (W * Z + X * Y);
+        double cosy_cosp = 1 - 2 * (Y * Y + Z * Z);
+        angles.Yaw = (float)Math.Atan2(siny_cosp, cosy_cosp);
+        return angles;
+    }
+
+    public override int GetHashCode()
+    {
+        int hash = X.GetHashCode()
+                 ^ Y.GetHashCode()
+                 ^ Z.GetHashCode()
+                 ^ W.GetHashCode();
+        return hash;
+    }
+
+    public override bool Equals(object obj)
+    {
+        if (!(obj is Quaternion other))
+            return false;
+        if (!X.Equals(other.X))
+            return false;
+        if (!Y.Equals(other.Y))
+            return false;
+        if (!Z.Equals(other.Z))
+            return false;
+        if (!W.Equals(other.W))
+            return false;
+        return true;
+    }
+}
+
+internal static class Formatting
+{
+    public static bool FuzzyEquals(this float a, float b, float epsilon = 10e-5f)
+    {
+        return Math.Abs(a - b) < epsilon;
+    }
+}
+
+public struct EulerAngles
+{
+    public float Yaw;
+    public float Pitch;
+    public float Roll;
 }

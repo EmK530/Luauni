@@ -40,8 +40,8 @@ public class Camera : MonoBehaviour
         set
         {
             _cframe = value;
-            transform.position = _cframe.Position;
-            transform.rotation = _cframe.Rotation;
+            transform.position = value.Position;
+            transform.rotation = new Quaternion(value * CFrame._angles(0, Mathf.PI, 0));
         }
     }
 

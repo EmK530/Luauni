@@ -56,6 +56,6 @@ public class BodyGyro : MonoBehaviour
 
     void FixedUpdate()
     {
-        rb.rotation = ((Quaternion)CFrame).normalized;
+        rb.rotation = ((UnityEngine.Quaternion)new Quaternion(CFrame)).normalized;
     }
 }

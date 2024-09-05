@@ -183,7 +183,7 @@ public class ImageLabel : MonoBehaviour
         set
         {
             _rotation = value;
-            transform.rotation = Quaternion.Euler(0,0,Convert.ToSingle(-_rotation));
+            transform.rotation = UnityEngine.Quaternion.Euler(0,0,Convert.ToSingle(-_rotation));
         }
     }
 

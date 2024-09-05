@@ -160,7 +160,7 @@ public class TextLabel : MonoBehaviour
             {
                 offset = -p.rotation.eulerAngles.z;
             }
-            transform.rotation = Quaternion.Euler(0, 0, Convert.ToSingle(-_rotation) - offset);
+            transform.rotation = UnityEngine.Quaternion.Euler(0, 0, Convert.ToSingle(-_rotation) - offset);
         }
     }
 
