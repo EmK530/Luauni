@@ -2,6 +2,7 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using static Enum;
 
 public class MeshPart : MonoBehaviour
 {
@@ -34,7 +35,7 @@ public class MeshPart : MonoBehaviour
         set
         {
             if (mr == null) { mr = GetComponent<MeshRenderer>(); }
-            mr.material.SetColor("_BaseColor", new Color(value.r, value.g, value.b));
+            mr.material.SetColor("_BaseColor", new Color(value.r, value.g, value.b, 1f-(float)_transparency));
         }
     }
     public Color3 Color
@@ -47,7 +48,7 @@ public class MeshPart : MonoBehaviour
         set
         {
             if (mr == null) { mr = GetComponent<MeshRenderer>(); }
-            mr.material.SetColor("_BaseColor", new Color(value.r, value.g, value.b));
+            mr.material.SetColor("_BaseColor", new Color(value.r, value.g, value.b, 1f-(float)_transparency));
         }
     }
 
@@ -70,6 +71,30 @@ public class MeshPart : MonoBehaviour
         }
     }
 
+    public Vector3 Position
+    {
+        get
+        {
+            return transform.position;
+        }
+        set
+        {
+            transform.position = value;
+        }
+    }
+
+    public Vector3 Size
+    {
+        get
+        {
+            return transform.localScale;
+        }
+        set
+        {
+            transform.localScale = value;
+        }
+    }
+
     private double _reflectance;
     public double Reflectance
     {
@@ -79,6 +104,23 @@ public class MeshPart : MonoBehaviour
             _reflectance = value;
             if (mr == null) { mr = GetComponent<MeshRenderer>(); }
             mr.material.SetFloat("_Smoothness", Convert.ToSingle(value));
+        }
+    }
+
+    [SerializeField]
+    private double _transparency = 0;
+    public double Transparency
+    {
+        get { return _transparency; }
+        set
+        {
+            _transparency = value;
+            if (mr == null) { mr = GetComponent<MeshRenderer>(); }
+            UnityEngine.Material mat = mr.material;
+            Misc.SetSurfaceType(mat, value > 0f);
+            Color c = mat.GetColor("_BaseColor");
+            mat.SetColor("_BaseColor", new Color(c.r, c.g, c.b, 1f-(float)_transparency));
+            mr.material = mat;
         }
     }
 
@@ -110,7 +152,7 @@ public class MeshPart : MonoBehaviour
         {
             if (mr == null) { mr = GetComponent<MeshRenderer>(); }
             string id = value.Split("rbxassetid://")[1];
-            Material m = new Material(Resources.Load<Material>("rbxassetid/MeshTexture/" + id));
+            UnityEngine.Material m = new UnityEngine.Material(Resources.Load<UnityEngine.Material>("rbxassetid/MeshTexture/" + id));
             if (m != null)
             {
                 mr.material = m;
@@ -128,7 +170,7 @@ public class MeshPart : MonoBehaviour
         get { return Enum.Material.Plastic; }
         set
         {
-            Logging.Warn("Ignoring unsupported property.", "MeshPart:Material");
+            //Logging.Warn("Ignoring unsupported property.", "MeshPart:Material");
         }
     }
 

@@ -113,7 +113,10 @@ public class TaskScheduler : MonoBehaviour
         {
             if (!closure.complete && closure.type == YieldType.Hybrid && Time.realtimeSinceStartupAsDouble >= closure.resumeAt)
             {
-                Luau.returnToProto(ref closure.yieldReturnTo, new object[1] { Time.realtimeSinceStartupAsDouble - closure.yieldStart });
+                if (closure.yieldReturnTo != null)
+                {
+                    Luau.returnToProto(ref closure.yieldReturnTo, new object[1] { Time.realtimeSinceStartupAsDouble - closure.yieldStart });
+                }
                 lastRanCount++;
                 yield return Misc.ExecuteCoroutine(Luauni.Execute(closure));
             }
@@ -127,7 +130,10 @@ public class TaskScheduler : MonoBehaviour
         {
             if (!closure.complete && closure.type == YieldType.Task && Time.realtimeSinceStartupAsDouble >= closure.resumeAt)
             {
-                Luau.returnToProto(ref closure.yieldReturnTo, new object[1] { Time.realtimeSinceStartupAsDouble - closure.yieldStart });
+                if (closure.yieldReturnTo != null)
+                {
+                    Luau.returnToProto(ref closure.yieldReturnTo, new object[1] { Time.realtimeSinceStartupAsDouble - closure.yieldStart });
+                }
                 lastRanCount++;
                 yield return Misc.ExecuteCoroutine(Luauni.Execute(closure));
             }

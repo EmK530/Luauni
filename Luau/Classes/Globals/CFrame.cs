@@ -311,9 +311,9 @@ public class CFrame
         CFrame cf1 = (CFrame)inp[0];
         CFrame cf2 = (CFrame)inp[1];
         double lerp = (double)inp[2];
-        if (lerp == 0f)
+        if (lerp == 0d)
             Luau.returnToProto(ref dat, new object[1] { cf1 });
-        else if (lerp == 1f)
+        else if (lerp == 1d)
             Luau.returnToProto(ref dat, new object[1] { cf2 });
         var q1 = new Quaternion(cf1);
         var q2 = new Quaternion(cf2);

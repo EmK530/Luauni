@@ -12,7 +12,12 @@ public static class math
     //missing acos
     //missing asin
     //missing atan
-    //missing atan2
+    public static System.Collections.IEnumerator atan2(CallData dat)
+    {
+        object[] inp = Luau.getAllArgs(ref dat);
+        Luau.returnToProto(ref dat, new object[1] { Math.Atan2(Convert.ToDouble(inp[0]), Convert.ToDouble(inp[1])) });
+        yield break;
+    }
     //missing ceil
     //missing clamp
     public static System.Collections.IEnumerator cos(CallData dat)
@@ -98,7 +103,12 @@ public static class math
         Luau.returnToProto(ref dat, new object[1] { Math.Round(Luau.safeNum(inp[0])) });
         yield break;
     }
-    //missing sign
+    public static System.Collections.IEnumerator sign(CallData dat)
+    {
+        object[] inp = Luau.getAllArgs(ref dat);
+        Luau.returnToProto(ref dat, new object[1] { (double)Mathf.Sign(Convert.ToSingle(inp[0])) });
+        yield break;
+    }
     public static System.Collections.IEnumerator sin(CallData dat)
     {
         object[] inp = Luau.getAllArgs(ref dat);

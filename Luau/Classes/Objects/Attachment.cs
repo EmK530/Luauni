@@ -32,7 +32,46 @@ public class Attachment : MonoBehaviour
         }
     }
 
-    public Vector3 Position = new Vector3();
+    [SerializeField]
+    public UnityEngine.Vector3 position;
+    [SerializeField]
+    public UnityEngine.Vector3 orientation;
+
+    public Vector3 Position
+    {
+        get { return position; }
+        set { position = value; }
+    }
+    public Vector3 Orientation
+    {
+        get { return orientation; }
+        set { orientation = value; }
+    }
+
+    public CFrame CFrame
+    {
+        get { 
+            return new CFrame(Position) * CFrame._angles(
+                orientation.x * Mathf.Deg2Rad,
+                orientation.y * Mathf.Deg2Rad,
+                orientation.z * Mathf.Deg2Rad
+            );
+        }
+    }
+    public CFrame ToWorldSpace()
+    {
+        UnityEngine.Vector3 vec = transform.parent.rotation.eulerAngles;
+        CFrame cf = new CFrame((Vector3)transform.parent.position + Position) * CFrame._angles(
+            vec.x * Mathf.Deg2Rad,
+            vec.y * Mathf.Deg2Rad,
+            vec.z * Mathf.Deg2Rad
+        ) * CFrame._angles(
+            orientation.x * Mathf.Deg2Rad,
+            orientation.y * Mathf.Deg2Rad,
+            orientation.z * Mathf.Deg2Rad
+        );
+        return CFrame * cf;
+    }
 
     Rigidbody rb;
 

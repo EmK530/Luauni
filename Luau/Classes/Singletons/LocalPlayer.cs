@@ -18,6 +18,8 @@ public class LocalPlayer : MonoBehaviour
 
     public RBXScriptSignal Chatted = new RBXScriptSignal(); // we have no chat
 
+    public static string Name = "self";
+
     public static LocalPlayer instance;
     public static bool isObject = true;
     public static GameObject source;

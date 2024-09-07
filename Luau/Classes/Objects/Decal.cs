@@ -47,6 +47,20 @@ public class Decal : MonoBehaviour
 
     DecalProjector src;
 
+    private double _transparency;
+    public double Transparency
+    {
+        get { return _transparency; }
+        set
+        {
+            if (value != _transparency)
+            {
+                _transparency = value;
+                src.enabled = _transparency == 0;
+            }
+        }
+    }
+
     void SetTexture(string value)
     {
         _texture = value;

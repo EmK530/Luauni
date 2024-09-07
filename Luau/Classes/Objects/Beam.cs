@@ -1,6 +1,7 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Net.Mail;
 using System.Security.Permissions;
 using System.Xml;
 using Unity.VisualScripting;
@@ -48,11 +49,44 @@ public class Beam : MonoBehaviour
         get { return w1; }
         set { w1 = value; lr.endWidth = (float)value; }
     }
+    public bool Enabled
+    {
+        get { return lr.enabled; }
+        set { lr.enabled = value; }
+    }
+    public NumberSequence _transparency = new NumberSequence(0);
+    public NumberSequence Transparency
+    {
+        get { return _transparency; }
+        set {
+            _transparency = value;
+            Gradient gd = value.ToAlphaGradient();
+            //temporary fix while color is missing
+            gd.colorKeys = new GradientColorKey[] {
+                new GradientColorKey(Color.black,0f),
+                new GradientColorKey(Color.black,1f)
+            };
+            lr.colorGradient = gd;
+        }
+    }
+    [SerializeField]
+    public Attachment Attachment0;
+    [SerializeField]
+    public Attachment Attachment1;
 
     public static bool isObject = true;
 
     void Awake()
     {
         if (lr == null) { lr = GetComponent<LineRenderer>(); }
+    }
+
+    void Update()
+    {
+        if(Attachment0!=null && Attachment1 != null)
+        {
+            lr.SetPosition(0, (Attachment0.transform.parent.position) + (UnityEngine.Vector3)Attachment0.Position);
+            lr.SetPosition(1, (Attachment1.transform.parent.position) + (UnityEngine.Vector3)Attachment1.Position);
+        }
     }
 }

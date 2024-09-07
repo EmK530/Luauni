@@ -35,23 +35,31 @@ public static class String
 
     public static IEnumerator sub(CallData dat)
     {
-        object[] inp = Luau.getAllArgs(ref dat);
+        dynamic[] inp = Luau.getAllArgs(ref dat);
+        string subtarget = "";
+        if(inp[0].GetType() != typeof(string))
+        {
+            subtarget = inp[0].ToString();
+        } else
+        {
+            subtarget = inp[0];
+        }
         string ret = "";
         switch(inp.Length)
         {
             case 1:
-                try { ret = ((string)inp[0]).Substring(1); } catch (Exception e) {Logging.Warn("sub err: " +  e.Message);}
+                try { ret = subtarget.Substring(1); } catch (Exception e) {Logging.Warn("sub err: " +  e.Message);}
                 Luau.returnToProto(ref dat, new object[1] { ret });
                 break;
             case 2:
-                try { ret = ((string)inp[0]).Substring(Convert.ToInt32(inp[1])); } catch (Exception e) {Logging.Warn("sub err: " +  e.Message);}
+                try { ret = subtarget.Substring(Convert.ToInt32(inp[1])); } catch (Exception e) {Logging.Warn("sub err: " +  e.Message);}
                 Luau.returnToProto(ref dat, new object[1] { ret });
                 break;
             default:
-                string substring = ((string)inp[0]);
                 int v1 = Convert.ToInt32(inp[1]) - 1;
-                int v2 = Math.Min(Convert.ToInt32(inp[2]) - v1, substring.Length-v1);
-                try { ret = substring.Substring(v1, v2); } catch {Logging.Warn($"sub err: '{(string)inp[0]}', {Convert.ToInt32(inp[1])}, {Convert.ToInt32(inp[2])} | {v1}, {v2}");}
+                int endPos = Convert.ToInt32(inp[2]);
+                int v2 = Math.Min((endPos == -1 ? subtarget.Length : endPos) - v1, subtarget.Length-v1);
+                try { ret = subtarget.Substring(v1, v2); } catch {Logging.Warn($"sub err: '{subtarget}', {Convert.ToInt32(inp[1])}, {Convert.ToInt32(inp[2])} | {v1}, {v2}");}
                 Luau.returnToProto(ref dat, new object[1] { ret });
                 break;
         }

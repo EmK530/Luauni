@@ -13,6 +13,7 @@ public static class Services
         ["ContextActionService"] = ContextActionService.instance,
         ["RunService"] = RunService.instance,
         ["ContentProvider"] = ContentProvider.instance,
+        ["UserGameSettings"] = UserGameSettings.instance,
 
         //custom
 

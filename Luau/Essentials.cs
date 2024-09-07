@@ -10,12 +10,12 @@ using UnityEngine;
 
 public class RegisterManager
 {
-    private dynamic[] _registers;
+    private object[] _registers;
     public byte stacktop = 0;
 
     public RegisterManager(int size)
     {
-        _registers = new dynamic[size];
+        _registers = new object[size];
     }
 
     public dynamic this[long index]
@@ -53,8 +53,8 @@ public class Proto
     public Proto[] p;
     public uint[] code;
     public uint[] codeentry;
-    public Dictionary<string, dynamic> imports;
-    public dynamic[] k;
+    public Dictionary<string, object> imports;
+    public object[] k;
     public RegisterManager registers;
     public uint callReg;
     public uint expectedReturns;
@@ -82,7 +82,7 @@ public class SClosure
     public List<int> iP = new List<int>();
     public List<Proto> pL = new List<Proto>();
     public List<Closure?> cL = new List<Closure?>();
-    public dynamic[] args;
+    public object[] args;
     public bool initiated = false;
     public bool complete = false;
     public bool ended = false;
@@ -108,7 +108,7 @@ public class SClosure
 public class Closure
 {
     public Proto p;
-    public dynamic[] upvals;
+    public object[] upvals;
     public int loadedUps = 0;
     public string hash = "";
 
@@ -125,7 +125,7 @@ public class UpvalREF
 public class NamedDict
 {
     public string name;
-    public Dictionary<string, dynamic> dict;
+    public Dictionary<string, object> dict;
 }
 
 public class CallData
@@ -139,34 +139,34 @@ public class CallData
 
 public class TableIterator
 {
-    private dynamic[] table;
+    private object[] table;
     private int index = 0;
 
-    public TableIterator(dynamic[] table)
+    public TableIterator(object[] table)
     {
         this.table = table;
         this.index = -1;
     }
 
-    public (bool, dynamic[]) Get()
+    public (bool, object[]) Get()
     {
         this.index++;
         if (this.index < this.table.Length)
         {
-            return (true, new dynamic[2] { this.index + 1, this.table[this.index] });
+            return (true, new object[2] { this.index + 1, this.table[this.index] });
         } else
         {
-            return (false, new dynamic[0]);
+            return (false, new object[0]);
         }
     }
 }
 
 public class ArrayIterator
 {
-    private Dictionary<string, dynamic> array;
-    private Dictionary<string, dynamic>.Enumerator e;
+    private Dictionary<string, object> array;
+    private Dictionary<string, object>.Enumerator e;
 
-    public ArrayIterator(Dictionary<string, dynamic> array)
+    public ArrayIterator(Dictionary<string, object> array)
     {
         this.array = array;
         e = array.GetEnumerator();
@@ -177,15 +177,15 @@ public class ArrayIterator
         e = array.dict.GetEnumerator();
     }
 
-    public (bool, dynamic[]) Get()
+    public (bool, object[]) Get()
     {
         if (e.MoveNext())
         {
-            return (true, new dynamic[2] { e.Current.Key, e.Current.Value });
+            return (true, new object[2] { e.Current.Key, e.Current.Value });
         }
         else
         {
-            return (false, new dynamic[0]);
+            return (false, new object[0]);
         }
     }
 }
@@ -210,25 +210,25 @@ public static class Luau
             return false;
         return v1 == v2;
     }
-    public static bool LIKELY(dynamic v1)
+    public static bool LIKELY(object v1)
     {
         if (v1 == null)
             return false;
         Type t = v1.GetType();
         if (t == typeof(bool)) {
-            return v1;
+            return (bool)v1;
         }
         return true;
     }
-    public static dynamic SAFEINDEX(dynamic v1, string key)
+    public static object SAFEINDEX(object v1, string key)
     {
-        dynamic inner = v1;
+        object inner = v1;
         if (inner == null)
             return null;
         foreach (string k in key.Split("."))
         {
-            Dictionary<string, dynamic> c1 = (Dictionary<string, dynamic>)inner;
-            if (c1.TryGetValue(k, out dynamic t1))
+            Dictionary<string, object> c1 = (Dictionary<string, object>)inner;
+            if (c1.TryGetValue(k, out object t1))
             {
                 if (t1 == null)
                     return null;
@@ -241,7 +241,7 @@ public static class Luau
         }
         return inner;
     }
-    public static double safeNum(dynamic inp)
+    public static double safeNum(object inp)
     {
         if (inp == null)
         {
@@ -252,25 +252,25 @@ public static class Luau
             return (double)inp;
         }
     }
-    public static void returnToProto(ref CallData p, dynamic[] args)
+    public static void returnToProto(ref CallData p, object[] args)
     {
         uint tern = p.returns == 0 ? (uint)args.Length : p.returns - 1;
         for (uint i = 0; i < tern; i++)
         {
-            dynamic tern2 = (i <= p.returns && i < args.Length) ? args[i] : null;
+            object tern2 = (i <= p.returns && i < args.Length) ? args[i] : null;
             p.initiator.registers[p.funcRegister + i] = tern2;
         }
     }
-    public static dynamic[] getAllArgs(ref CallData d)
+    public static object[] getAllArgs(ref CallData d)
     {
-        dynamic[] buf = new dynamic[(d.args != 0 ? d.args - 1 : d.initiator.stacktop - d.funcRegister)];
+        object[] buf = new object[(d.args != 0 ? d.args - 1 : d.initiator.stacktop - d.funcRegister)];
         for (int i = 0; i < buf.Length; i++)
         {
             buf[i] = d.initiator.registers[d.funcRegister + i + 1];
         }
         return buf;
     }
-    public static string accurate_tostring(dynamic arg, bool quotes = false)
+    public static string accurate_tostring(object arg, bool quotes = false)
     {
         if (arg == null)
             return "nil";
@@ -279,12 +279,12 @@ public static class Luau
             return (bool)arg ? "true" : "false";
         if (tp == typeof(string))
             return quotes ? '"'+(string)arg+'"' : (string)arg;
-        if (tp == typeof(dynamic[]))
+        if (tp == typeof(object[]))
         {
-            dynamic[] col = (dynamic[])arg;
+            object[] col = (object[])arg;
             string build = "{";
             bool first = true;
-            foreach(dynamic o in col)
+            foreach(object o in col)
             {
                 if (!first)
                 {
@@ -342,7 +342,7 @@ public static class ParseEssentials
         p.flags = 0;
         p.codeentry = null;
         p.registers = new RegisterManager(256);
-        p.imports = new Dictionary<string, dynamic>();
+        p.imports = new Dictionary<string, object>();
         p.bytecodeid = i;
         p.maxstacksize = br.ReadByte();
         p.numparams = br.ReadByte();
@@ -358,7 +358,7 @@ public static class ParseEssentials
         }
         p.sizek = br.ReadVariableLen();
         Logging.Debug($"Loading {p.sizek} constants for Proto {i}", "Luauni:Parse:PP");
-        p.k = new dynamic[p.sizek];
+        p.k = new object[p.sizek];
         BindingFlags search = BindingFlags.Instance | BindingFlags.Static | BindingFlags.Public;
         int tables = 0;
         for (int j = 0; j < p.sizek; ++j)
@@ -388,7 +388,7 @@ public static class ParseEssentials
                     p.k[j] = rd;
                     break;
                 case LuauBytecodeTag.LBC_CONSTANT_TABLE:
-                    Dictionary<string, dynamic> kt = new Dictionary<string, dynamic>(); // key table
+                    Dictionary<string, object> kt = new Dictionary<string, object>(); // key table
                     int keys = br.ReadVariableLen();
                     for (int k = 0; k < keys; ++k)
                     {
@@ -445,9 +445,9 @@ public static class ParseEssentials
                                 else
                                 {
                                     Type t = Misc.SafeType(current);
-                                    if (t == typeof(Dictionary<string, dynamic>))
+                                    if (t == typeof(Dictionary<string, object>))
                                     {
-                                        Dictionary<string, dynamic> arr = (Dictionary<string, dynamic>)current;
+                                        Dictionary<string, object> arr = (Dictionary<string, object>)current;
                                         current = arr[index];
                                     }
                                     else if (t == typeof(GameObject) || index == "camera")
@@ -466,7 +466,7 @@ public static class ParseEssentials
                                     else if (t == typeof(NamedDict))
                                     {
                                         NamedDict nd = (NamedDict)current;
-                                        if (nd.dict.TryGetValue(index, out dynamic val))
+                                        if (nd.dict.TryGetValue(index, out object val))
                                         {
                                             current = val;
                                         }
@@ -564,7 +564,7 @@ public static class ParseEssentials
                     Closure newclosure = new Closure()
                     {
                         p = protos[fid],
-                        upvals = new dynamic[protos[fid].nups],
+                        upvals = new object[protos[fid].nups],
                         owner = owner,
                         hash = owner.scriptHash
                     };
@@ -583,6 +583,32 @@ public static class ParseEssentials
 
 public static class Misc
 {
+    public static void SetSurfaceType(Material mat, bool isTransparent)
+    {
+        if (isTransparent)
+        {
+            mat.SetInt("_Surface", 1);
+            mat.SetOverrideTag("RenderType", "Transparent");
+            mat.renderQueue = (int)UnityEngine.Rendering.RenderQueue.Transparent;
+            mat.SetInt("_SrcBlend", (int)UnityEngine.Rendering.BlendMode.SrcAlpha);
+            mat.SetInt("_DstBlend", (int)UnityEngine.Rendering.BlendMode.OneMinusSrcAlpha);
+            mat.SetInt("_ZWrite", 0);
+            mat.SetInt("_Cull", (int)UnityEngine.Rendering.CullMode.Back);
+        }
+        else
+        {
+            mat.SetInt("_Surface", 0);
+            mat.SetOverrideTag("RenderType", "Opaque");
+            mat.renderQueue = (int)UnityEngine.Rendering.RenderQueue.Geometry;
+            mat.SetInt("_SrcBlend", (int)UnityEngine.Rendering.BlendMode.One);
+            mat.SetInt("_DstBlend", (int)UnityEngine.Rendering.BlendMode.Zero);
+            mat.SetInt("_ZWrite", 1);
+            mat.SetInt("_Cull", (int)UnityEngine.Rendering.CullMode.Back);
+        }
+        mat.EnableKeyword("_SURFACE_TYPE_TRANSPARENT");
+        mat.DisableKeyword("_SURFACE_TYPE_OPAQUE");
+        mat.SetShaderPassEnabled("ShadowCaster", true);
+    }
     public static string GenerateHash()
     {
         var bytes = new byte[16];
@@ -622,7 +648,7 @@ public static class Misc
         }
     }
 
-    public static IEnumerator SummonClosure(Closure cl, dynamic[] args)
+    public static IEnumerator SummonClosure(Closure cl, object[] args)
     {
         SClosure create = new SClosure()
         {
@@ -635,7 +661,7 @@ public static class Misc
         yield return ExecuteCoroutine(TaskScheduler.instance.Spawn(create));
         yield break;
     }
-    public static void SummonClosureHybrid(Closure cl, dynamic[] args)
+    public static void SummonClosureHybrid(Closure cl, object[] args)
     {
         SClosure create = new SClosure()
         {
@@ -647,7 +673,7 @@ public static class Misc
         create.cL.Add(null);
         TaskScheduler.instance.SpawnHybrid(create);
     }
-    public static void SummonClosureTask(Closure cl, dynamic[] args)
+    public static void SummonClosureTask(Closure cl, object[] args)
     {
         SClosure create = new SClosure()
         {
@@ -657,6 +683,44 @@ public static class Misc
         create.iP.Add(-1);
         create.pL.Add(cl.p);
         create.cL.Add(null);
+        TaskScheduler.instance.SpawnTask(create);
+    }
+    public static void DelayClosureHybrid(Closure cl, object[] args, double duration)
+    {
+        SClosure create = new SClosure()
+        {
+            source = cl,
+            args = args
+        };
+        create.iP.Add(-1);
+        create.pL.Add(cl.p);
+        create.cL.Add(null);
+
+        create.yielded = true;
+        create.type = YieldType.Hybrid;
+        create.yieldStart = Time.realtimeSinceStartupAsDouble;
+        create.resumeAt = Time.realtimeSinceStartupAsDouble + duration;
+        create.yieldReturnTo = null;
+
+        TaskScheduler.instance.SpawnHybrid(create);
+    }
+    public static void DelayClosureTask(Closure cl, object[] args, double duration)
+    {
+        SClosure create = new SClosure()
+        {
+            source = cl,
+            args = args
+        };
+        create.iP.Add(-1);
+        create.pL.Add(cl.p);
+        create.cL.Add(null);
+
+        create.yielded = true;
+        create.type = YieldType.Task;
+        create.yieldStart = Time.realtimeSinceStartupAsDouble;
+        create.resumeAt = Time.realtimeSinceStartupAsDouble + duration;
+        create.yieldReturnTo = null;
+
         TaskScheduler.instance.SpawnTask(create);
     }
     public static void YieldClosure(ref SClosure closure, YieldType type, double duration, ref CallData returns)
@@ -682,7 +746,7 @@ public static class Misc
             return "nil";
         }
         Type t = value.GetType();
-        if(t == typeof(dynamic[]) || t == typeof(NamedDict) || t == typeof(Dictionary<string, dynamic>))
+        if(t == typeof(object[]) || t == typeof(NamedDict) || t == typeof(Dictionary<string, object>))
         {
             return "table";
         }
@@ -726,7 +790,7 @@ public static class Misc
     {
         return Type.GetType(name);
     }
-    public static Type SafeType(dynamic input)
+    public static Type SafeType(object input)
     {
         if (input is Type)
         {
@@ -737,7 +801,7 @@ public static class Misc
             return input.GetType();
         }
     }
-    public static GameObject SafeGameObjectFromClass(dynamic input)
+    public static GameObject SafeGameObjectFromClass(object input)
     {
         Type t = SafeType(input);
         if (t == typeof(GameObject))

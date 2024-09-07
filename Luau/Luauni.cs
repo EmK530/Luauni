@@ -12,6 +12,8 @@ using System.Diagnostics;
 using System.Linq;
 using Unity.VisualScripting;
 using System.Collections;
+using System.Diagnostics.Eventing.Reader;
+using UnityEngine.Profiling;
 
 public struct LuauniConfig
 {
@@ -258,14 +260,14 @@ public class Luauni : MonoBehaviour
         maincl = new Closure()
         {
             p = mainProto,
-            upvals = new dynamic[0],
+            upvals = new object[0],
             owner = this,
             hash = scriptHash
         };
         main = new SClosure()
         {
             source = maincl,
-            args = new dynamic[0],
+            args = new object[0],
             initiated = true
         };
         main.pL.Add(mainProto);
@@ -282,11 +284,10 @@ public class Luauni : MonoBehaviour
     private Closure maincl;
     public SClosure main;
 
-    private static Dictionary<Type, Dictionary<string, MemberInfo>> reflectionCache = new Dictionary<Type, Dictionary<string, MemberInfo>>();
-
+    private static readonly Dictionary<Type, Dictionary<string, MemberInfo>> reflectionCache = new Dictionary<Type, Dictionary<string, MemberInfo>>();
     public static bool ReflectionIndex(string key, ref SClosure target, uint inst)
     {
-        dynamic tgt = target.pL[target.cEL].registers[Luau.INSN_B(inst)];
+        object tgt = target.pL[target.cEL].registers[Luau.INSN_B(inst)];
         Type t = Misc.SafeType(tgt);
         if (!reflectionCache.TryGetValue(t, out var memberCache))
         {
@@ -295,69 +296,30 @@ public class Luauni : MonoBehaviour
         }
         if (!memberCache.TryGetValue(key, out var member))
         {
-            member = t.GetField(key, search) as MemberInfo
-                ?? t.GetNestedType(key, search) as MemberInfo
-                ?? t.GetMethod(key, search) as MemberInfo
-                ?? t.GetProperty(key, search) as MemberInfo;
-            if (member == null)
-            {
-                FieldInfo f1 = t.GetField("_inherits");
-                if (f1 != null)
-                {
-                    List<Type> l = (List<Type>)f1.GetValue(tgt);
-                    foreach (Type t2 in l)
-                    {
-                        member = t2.GetField(key, search) as MemberInfo
-                            ?? t2.GetNestedType(key, search) as MemberInfo
-                            ?? t2.GetMethod(key, search) as MemberInfo
-                            ?? t2.GetProperty(key, search) as MemberInfo;
-                        if (member != null)
-                        {
-                            break;
-                        }
-                    }
-                }
-            }
+            MemberInfo[] members = t.GetMember(key, search);
+            member = members.Length > 0 ? members[0] : null;
             memberCache[key] = member;
         }
         if (member != null)
         {
-            if (member is FieldInfo field)
+            object value = GetMemberValue(member, tgt);
+            if (value != null)
             {
-                dynamic send = field.GetValue(tgt);
-                target.pL[target.cEL].registers[Luau.INSN_A(inst)] = send;
-            }
-            else if (member is Type nestedType)
-            {
-                target.pL[target.cEL].registers[Luau.INSN_A(inst)] = nestedType;
-            }
-            else if (member is MethodInfo method)
-            {
-                target.pL[target.cEL].registers[Luau.INSN_A(inst)] = (Globals.Standard)Delegate.CreateDelegate(typeof(Globals.Standard), tgt, method);
-            }
-            else if (member is PropertyInfo property)
-            {
-                dynamic send = property.GetValue(tgt);
-                target.pL[target.cEL].registers[Luau.INSN_A(inst)] = send;
+                target.pL[target.cEL].registers[Luau.INSN_A(inst)] = value;
+                return true;
             }
         }
         else
         {
-            FieldInfo isObject = t.GetField("isObject");
-            if (isObject == null)
-            {
-                Logging.Error($"Internal error: isObject not part of class {t.Name}", "Luauni:Step");
-                return false;
-            }
-            bool indexable = (bool)isObject.GetValue(t);
-            if (indexable)
+            if (!t.IsEnum)
             {
                 FieldInfo f1 = t.GetField("source", search);
-                GameObject obj = f1 != null ? (GameObject)(f1.GetValue(tgt)) : ((Component)tgt).gameObject;
+                GameObject obj = f1 != null ? (GameObject)f1.GetValue(tgt) : ((Component)tgt).gameObject;
                 Transform find = obj.transform.Find(key);
                 if (find != null)
                 {
                     target.pL[target.cEL].registers[Luau.INSN_A(inst)] = Misc.TryGetType(find);
+                    return true;
                 }
                 else
                 {
@@ -367,11 +329,39 @@ public class Luauni : MonoBehaviour
             }
             else
             {
-                Logging.Error($"{key} is not a valid member of {tgt}", "Luauni:Step");
-                return false;
+                if (key == "Name")
+                {
+                    target.pL[target.cEL].registers[Luau.INSN_A(inst)] = System.Enum.GetName(t, tgt);
+                }
+                else if (key == "Value")
+                {
+                    target.pL[target.cEL].registers[Luau.INSN_A(inst)] = (int)tgt;
+                }
+                else
+                {
+                    Logging.Error($"{key} is not a valid member of {tgt}", "Luauni:Step");
+                    return false;
+                }
             }
         }
         return true;
+    }
+
+    public static object GetMemberValue(MemberInfo member, object target)
+    {
+        switch (member)
+        {
+            case FieldInfo field:
+                return field.GetValue(target);
+            case PropertyInfo property:
+                return property.GetValue(target);
+            case MethodInfo method:
+                return (Globals.Standard)Delegate.CreateDelegate(typeof(Globals.Standard), target, method);
+            case Type nestedType:
+                return nestedType;
+            default:
+                return null;
+        }
     }
 
     public static System.Collections.IEnumerator Execute(SClosure target)
@@ -380,7 +370,7 @@ public class Luauni : MonoBehaviour
         if (!target.initiated)
         {
             int idx = 0;
-            foreach(dynamic o in target.args)
+            foreach(object o in target.args)
             {
                 target.source.p.registers[idx] = o;
                 idx++;
@@ -393,7 +383,7 @@ public class Luauni : MonoBehaviour
         {
             uint inst = target.nextInst();
             LuauOpcode opcode = (LuauOpcode)Luau.INSN_OP(inst);
-            Logging.Debug($"Proto {target.pL[target.cEL].bytecodeid} executing opcode {opcode}", "Luauni:Step");
+            //Logging.Debug($"Proto {target.pL[target.cEL].bytecodeid} executing opcode {opcode}", "Luauni:Step");
             switch (opcode)
             {
                 case LuauOpcode.LOP_NOP:
@@ -402,12 +392,12 @@ public class Luauni : MonoBehaviour
                 case LuauOpcode.LOP_CLOSEUPVALS:
                 case LuauOpcode.LOP_FASTCALL:
                 case LuauOpcode.LOP_FASTCALL1:
-                    Logging.Debug($"Ignoring opcode not planned to support: {opcode}", "Luauni:Step");
+                    //Logging.Debug($"Ignoring opcode not planned to support: {opcode}", "Luauni:Step");
                     break;
                 case LuauOpcode.LOP_FASTCALL2:
                 case LuauOpcode.LOP_FASTCALL2K:
                     target.nextInst(); // skip AUX
-                    Logging.Debug($"Ignoring opcode not planned to support: {opcode}", "Luauni:Step");
+                    //Logging.Debug($"Ignoring opcode not planned to support: {opcode}", "Luauni:Step");
                     break;
                 case LuauOpcode.LOP_ADD:
                     {
@@ -441,7 +431,7 @@ public class Luauni : MonoBehaviour
                         Type regType = regcopy.GetType();
                         if (regType == typeof(Globals.Standard))
                         {
-                            Logging.Debug("Calling a standard function.", "Luauni:Step");
+                            //Logging.Debug("Calling a standard function.", "Luauni:Step");
                             Globals.Standard tgt = (Globals.Standard)regcopy;
                             CallData send = new CallData()
                             {
@@ -464,11 +454,11 @@ public class Luauni : MonoBehaviour
                             currentProto.expectedReturns = returns;
                             Closure cl = (Closure)currentProto.registers[reg];
                             Proto pr = cl.p;
-                            Logging.Debug($"Moving exeution to proto {pr.bytecodeid}, passing {args} args.", "Luauni:Step");
+                            //Logging.Debug($"Moving exeution to proto {pr.bytecodeid}, passing {args} args.", "Luauni:Step");
                             if (args == 0)
                             {
                                 args = currentProto.stacktop - reg;
-                                Logging.Debug($"Sending MULTRET ({args}) arguments.", "Luauni:Step");
+                                //Logging.Debug($"Sending MULTRET ({args}) arguments.", "Luauni:Step");
                             } else
                             {
                                 args--;
@@ -496,7 +486,7 @@ public class Luauni : MonoBehaviour
                         {
                             Logging.Error($"Cannot CAPTURE upvalue because nups limit has been exceeded for the proto.", "Luauni:Step"); target.complete = true; yield break;
                         }
-                        Logging.Debug($"Capturing upvalue of type {cap}", "Luauni:Step");
+                        //Logging.Debug($"Capturing upvalue of type {cap}", "Luauni:Step");
                         switch(cap)
                         {
                             case LuauCaptureType.LCT_VAL:
@@ -574,7 +564,7 @@ public class Luauni : MonoBehaviour
                         int jmp = Luau.INSN_D(inst);
                         Type t = Misc.SafeType(currentProto.registers[targ]);
                         uint varcount = target.nextInst();
-                        (bool, dynamic[]) get;
+                        (bool, object[]) get;
                         if (t == typeof(TableIterator))
                         {
                             TableIterator iter = (TableIterator)currentProto.registers[targ];
@@ -586,7 +576,7 @@ public class Luauni : MonoBehaviour
                         }
                         if (get.Item1)
                         {
-                            dynamic[] array = get.Item2;
+                            object[] array = get.Item2;
                             for (int i = 0; i < varcount; i++)
                             {
                                 currentProto.registers[targ + 3 + i] = (i < array.Length ? array[i] : null);
@@ -649,8 +639,8 @@ public class Luauni : MonoBehaviour
                             }
                         }
                         string importPath = string.Join('.', importPathParts);
-                        Logging.Debug("Retrieving import: " + importPath, "Luauni:Step");
-                        dynamic import = currentProto.imports[importPath];
+                        //Logging.Debug("Retrieving import: " + importPath, "Luauni:Step");
+                        object import = currentProto.imports[importPath];
                         if (import == null)
                         {
                             Logging.Error($"Import path '{importPath} is nil.'", "Luauni:Step"); target.complete = true; yield break;
@@ -663,18 +653,18 @@ public class Luauni : MonoBehaviour
                     }
                 case LuauOpcode.LOP_GETTABLE:
                     {
-                        dynamic rg = currentProto.registers[Luau.INSN_B(inst)];
+                        object rg = currentProto.registers[Luau.INSN_B(inst)];
                         Type t = Misc.SafeType(rg);
-                        if (t == typeof(dynamic[]))
+                        if (t == typeof(object[]))
                         {
-                            dynamic[] arr = (dynamic[])rg;
+                            object[] arr = (object[])rg;
                             int index = Convert.ToInt32((double)currentProto.registers[Luau.INSN_C(inst)]) - 1;
                             currentProto.registers[Luau.INSN_A(inst)] = index < arr.Length && index >= 0 ? arr[index] : null;
                         }
-                        else if (t == typeof(Dictionary<string, dynamic>))
+                        else if (t == typeof(Dictionary<string, object>))
                         {
-                            Dictionary<string, dynamic> arr = (Dictionary<string, dynamic>)rg;
-                            dynamic idx = currentProto.registers[Luau.INSN_C(inst)];
+                            Dictionary<string, object> arr = (Dictionary<string, object>)rg;
+                            object idx = currentProto.registers[Luau.INSN_C(inst)];
                             if (idx.GetType() == typeof(string))
                             {
                                 currentProto.registers[Luau.INSN_A(inst)] = arr[(string)currentProto.registers[Luau.INSN_C(inst)]];
@@ -682,29 +672,6 @@ public class Luauni : MonoBehaviour
                             else
                             {
                                 Logging.Error($"Attempt to index table with {idx.GetType()}", "Luauni:Step"); target.complete = true; yield break;
-                            }
-                        }
-                        else if (t == typeof(NamedDict))
-                        {
-                            NamedDict nd = (NamedDict)rg;
-                            string key = (string)currentProto.registers[Luau.INSN_C(inst)];
-                            Dictionary<string, dynamic> dict = nd.dict;
-                            if (dict.TryGetValue(key, out dynamic val))
-                            {
-                                if (val.GetType() == typeof(Dictionary<string, dynamic>))
-                                {
-                                    val = new NamedDict()
-                                    {
-                                        name = key,
-                                        dict = (Dictionary<string, dynamic>)val
-                                    };
-                                }
-                                currentProto.registers[Luau.INSN_A(inst)] = val;
-                                Logging.Debug($"Found key: {val}", "Luauni:Step");
-                            }
-                            else
-                            {
-                                Logging.Error($"{key} is not a valid member of {nd.name}", "Luauni:Step"); target.complete = true; yield break;
                             }
                         } else {
                             string key = (string)currentProto.registers[Luau.INSN_C(inst)];
@@ -718,30 +685,21 @@ public class Luauni : MonoBehaviour
                 case LuauOpcode.LOP_GETTABLEKS:
                     {
                         string key = (string)currentProto.k[target.nextInst()];
-                        Logging.Debug($"GETTABLEKS key: {key}", "Luauni:Step");
-                        dynamic tgt = currentProto.registers[Luau.INSN_B(inst)];
-                        Logging.Debug(tgt);
+                        //Logging.Debug($"GETTABLEKS key: {key}", "Luauni:Step");
+                        object tgt = currentProto.registers[Luau.INSN_B(inst)];
+                        //Logging.Debug(tgt);
                         if(tgt==null)
                         {
                             Logging.Error($"Attempt to index nil with {key}", "Luauni:Step"); target.complete = true; yield break;
                         }
                         Type t = Misc.SafeType(tgt);
-                        if(t == typeof(NamedDict))
+                        if(t == typeof(Dictionary<string, object>))
                         {
-                            NamedDict nd = (NamedDict)tgt;
-                            Dictionary<string, dynamic> dict = nd.dict;
-                            if (dict.TryGetValue(key, out dynamic val))
+                            Dictionary<string, object> dict = (Dictionary<string, object>)tgt;
+                            if (dict.TryGetValue(key, out object val))
                             {
-                                if (val.GetType() == typeof(Dictionary<string, dynamic>))
-                                {
-                                    val = new NamedDict()
-                                    {
-                                        name = key,
-                                        dict = (Dictionary<string, dynamic>)val
-                                    };
-                                }
                                 currentProto.registers[Luau.INSN_A(inst)] = val;
-                                Logging.Debug($"Found key: {val}", "Luauni:Step");
+                                //Logging.Debug($"Found key: {val}", "Luauni:Step");
                             }
                             else
                             {
@@ -759,7 +717,18 @@ public class Luauni : MonoBehaviour
                             }
                             else
                             {
-                                Logging.Error($"{key} is not a valid member of {tgt}", "Luauni:Step"); target.complete = true; yield break;
+                                if (key == "ClassName")
+                                {
+                                    currentProto.registers[Luau.INSN_A(inst)] = "GameObject";
+                                }
+                                else if (key == "Name")
+                                {
+                                    currentProto.registers[Luau.INSN_A(inst)] = obj.name;
+                                }
+                                else
+                                {
+                                    Logging.Error($"{key} is not a valid member of {tgt}", "Luauni:Step"); target.complete = true; yield break;
+                                }
                             }
                         }
                         else 
@@ -773,12 +742,12 @@ public class Luauni : MonoBehaviour
                     }
                 case LuauOpcode.LOP_GETTABLEN:
                     {
-                        dynamic rg = currentProto.registers[Luau.INSN_B(inst)];
+                        object rg = currentProto.registers[Luau.INSN_B(inst)];
                         Type t = Misc.SafeType(rg);
-                        if (t == typeof(dynamic[]))
+                        if (t == typeof(object[]))
                         {
-                            dynamic[] arr = (dynamic[])rg;
-                            int index = Convert.ToInt32(Luau.INSN_C(inst)) - 1;
+                            object[] arr = (object[])rg;
+                            int index = Convert.ToInt32(Luau.INSN_C(inst));
                             currentProto.registers[Luau.INSN_A(inst)] = index < arr.Length && index >= 0 ? arr[index] : null;
                         }
                         else
@@ -799,7 +768,7 @@ public class Luauni : MonoBehaviour
                             target.complete = true;
                             yield break;
                         }
-                        dynamic upvalue = cl.upvals[idx];
+                        object upvalue = cl.upvals[idx];
                         if(upvalue.GetType() == typeof(UpvalREF))
                         {
                             UpvalREF refer = (UpvalREF)upvalue;
@@ -819,7 +788,18 @@ public class Luauni : MonoBehaviour
                         dynamic reg = currentProto.registers[Luau.INSN_A(inst)];
                         if (Luau.LIKELY(reg))
                         {
-                            Logging.Debug("JUMPIF PASS");
+                            //Logging.Debug("JUMPIF PASS");
+                            target.jumpSteps(Luau.INSN_D(inst));
+                        }
+                    }
+                    break;
+                case LuauOpcode.LOP_JUMPIFLE:
+                    {
+                        dynamic reg1 = currentProto.registers[Luau.INSN_A(inst)];
+                        dynamic reg2 = currentProto.registers[target.nextInst()];
+                        if (reg1 <= reg2)
+                        {
+                            //Logging.Debug("JUMPIFLE PASS");
                             target.jumpSteps(Luau.INSN_D(inst));
                         }
                     }
@@ -829,7 +809,18 @@ public class Luauni : MonoBehaviour
                         dynamic reg = currentProto.registers[Luau.INSN_A(inst)];
                         if (!Luau.LIKELY(reg))
                         {
-                            Logging.Debug("JUMPIFNOT PASS");
+                            //Logging.Debug("JUMPIFNOT PASS");
+                            target.jumpSteps(Luau.INSN_D(inst));
+                        }
+                    }
+                    break;
+                case LuauOpcode.LOP_JUMPIFNOTLE:
+                    {
+                        dynamic reg1 = currentProto.registers[Luau.INSN_A(inst)];
+                        dynamic reg2 = currentProto.registers[target.nextInst()];
+                        if(!(reg1 <= reg2))
+                        {
+                            //Logging.Debug("JUMPIFNOTLE PASS");
                             target.jumpSteps(Luau.INSN_D(inst));
                         }
                     }
@@ -839,7 +830,7 @@ public class Luauni : MonoBehaviour
                         uint AUX = target.nextInst();
                         if (Luau.EQUAL(currentProto.registers[Luau.INSN_A(inst)], currentProto.registers[AUX]))
                         {
-                            Logging.Debug("JUMPIFEQ PASS");
+                            //Logging.Debug("JUMPIFEQ PASS");
                             target.jumpSteps(Luau.INSN_D(inst) - 1);
                         }
                         break;
@@ -847,21 +838,21 @@ public class Luauni : MonoBehaviour
                 case LuauOpcode.LOP_JUMPIFNOTEQ:
                     if (!Luau.EQUAL(currentProto.registers[Luau.INSN_A(inst)], currentProto.registers[target.nextInst()]))
                     {
-                        Logging.Debug("JUMPIFNOTEQ PASS");
+                        //Logging.Debug("JUMPIFNOTEQ PASS");
                         target.jumpSteps(Luau.INSN_D(inst) - 1);
                     }
                     break;
                 case LuauOpcode.LOP_JUMPIFLT:
                     if ((double)currentProto.registers[Luau.INSN_A(inst)] < (double)currentProto.registers[target.nextInst()])
                     {
-                        Logging.Debug("JUMPIFLT PASS");
+                        //Logging.Debug("JUMPIFLT PASS");
                         target.jumpSteps(Luau.INSN_D(inst) - 1);
                     }
                     break;
                 case LuauOpcode.LOP_JUMPIFNOTLT:
                     if (!((double)currentProto.registers[Luau.INSN_A(inst)] < (double)currentProto.registers[target.nextInst()]))
                     {
-                        Logging.Debug("JUMPIFNOTLT PASS");
+                        //Logging.Debug("JUMPIFNOTLT PASS");
                         target.jumpSteps(Luau.INSN_D(inst) - 1);
                     }
                     break;
@@ -874,22 +865,22 @@ public class Luauni : MonoBehaviour
                         bool flip = (AUX >> 31) == 1 ? false : true;
                         if (flip == Luau.EQUAL(currentProto.registers[Luau.INSN_A(inst)], currentProto.k[AUX & 16777215]))
                         {
-                            Logging.Debug("JUMPXEQK PASS");
+                            //Logging.Debug("JUMPXEQK PASS");
                             target.jumpSteps(Luau.INSN_D(inst) - 1);
                         }
                         break;
                     }
                 case LuauOpcode.LOP_LENGTH:
                     {
-                        dynamic reg = currentProto.registers[Luau.INSN_B(inst)];
+                        object reg = currentProto.registers[Luau.INSN_B(inst)];
                         Type tp = reg.GetType();
                         if (tp == typeof(string))
                         {
                             currentProto.registers[Luau.INSN_A(inst)] = (double)((string)reg).Length;
                         }
-                        else if (tp == typeof(dynamic[]))
+                        else if (tp == typeof(object[]))
                         {
-                            currentProto.registers[Luau.INSN_A(inst)] = (double)((dynamic[])reg).Length;
+                            currentProto.registers[Luau.INSN_A(inst)] = (double)((object[])reg).Length;
                         }
                         else
                         {
@@ -902,7 +893,7 @@ public class Luauni : MonoBehaviour
                     target.jumpSteps((int)Luau.INSN_C(inst));
                     break;
                 case LuauOpcode.LOP_LOADK:
-                    dynamic constant = currentProto.k[Luau.INSN_D(inst)];
+                    object constant = currentProto.k[Luau.INSN_D(inst)];
                     currentProto.registers[Luau.INSN_A(inst)] = constant;
                     break;
                 case LuauOpcode.LOP_LOADN:
@@ -972,7 +963,7 @@ public class Luauni : MonoBehaviour
                         uint a = Luau.INSN_A(inst);
                         uint b = Luau.INSN_B(inst);
                         string key = (string)currentProto.k[target.nextInst()];
-                        dynamic reg = currentProto.registers[b];
+                        object reg = currentProto.registers[b];
                         if(reg == null)
                         {
                             Logging.Error($"Attempt to index nil with {key}", "Luauni:Step"); target.complete = true; yield break;
@@ -1031,27 +1022,27 @@ public class Luauni : MonoBehaviour
                 case LuauOpcode.LOP_NEWCLOSURE:
                     target.lCC = new Closure() {
                         p = currentProto.p[Luau.INSN_D(inst)],
-                        upvals = new dynamic[currentProto.p[Luau.INSN_D(inst)].nups],
+                        upvals = new object[currentProto.p[Luau.INSN_D(inst)].nups],
                         owner = target.source.owner,
                         hash = target.source.hash
                     };
                     currentProto.registers[Luau.INSN_A(inst)] = target.lCC;
                     break;
                 case LuauOpcode.LOP_NEWTABLE:
-                    currentProto.registers[Luau.INSN_A(inst)] = new dynamic[target.nextInst()];
+                    currentProto.registers[Luau.INSN_A(inst)] = new object[target.nextInst()];
                     break;
                 case LuauOpcode.LOP_NOT:
                     currentProto.registers[Luau.INSN_A(inst)] = !Luau.LIKELY(currentProto.registers[Luau.INSN_B(inst)]);
                     break;
                 case LuauOpcode.LOP_OR:
                     {
-                        dynamic r1 = currentProto.registers[Luau.INSN_B(inst)];
+                        object r1 = currentProto.registers[Luau.INSN_B(inst)];
                         currentProto.registers[Luau.INSN_A(inst)] = Luau.LIKELY(r1) ? r1 : currentProto.registers[Luau.INSN_C(inst)];
                     }
                     break;
                 case LuauOpcode.LOP_ORK:
                     {
-                        dynamic r1 = currentProto.registers[Luau.INSN_B(inst)];
+                        object r1 = currentProto.registers[Luau.INSN_B(inst)];
                         currentProto.registers[Luau.INSN_A(inst)] = Luau.LIKELY(r1) ? r1 : currentProto.k[Luau.INSN_C(inst)];
                     }
                     break;
@@ -1076,7 +1067,7 @@ public class Luauni : MonoBehaviour
                         target.complete = true; target.ended = true; yield break;
                     } else
                     {
-                        Logging.Debug($"Proto {currentProto.bytecodeid} is returning.", "Luauni:Step");
+                        //Logging.Debug($"Proto {currentProto.bytecodeid} is returning.", "Luauni:Step");
                         uint begin = Luau.INSN_A(inst);
                         uint returns = Luau.INSN_B(inst);
                         if(returns == 0)
@@ -1107,8 +1098,17 @@ public class Luauni : MonoBehaviour
                     break;
                 case LuauOpcode.LOP_SETLIST:
                     {
-                        int valcount = (int)Luau.INSN_C(inst) - 1;
-                        dynamic[] reg = (dynamic[])currentProto.registers[Luau.INSN_A(inst)];
+                        uint valcount = Luau.INSN_C(inst);
+                        if (valcount == 0)
+                        {
+                            valcount = currentProto.stacktop - Luau.INSN_A(inst);
+                            //Logging.Debug($"Sending MULTRET ({valcount}) arguments.", "Luauni:Step");
+                        }
+                        else
+                        {
+                            valcount--;
+                        }
+                        object[] reg = (object[])currentProto.registers[Luau.INSN_A(inst)];
                         uint src = Luau.INSN_B(inst);
                         uint aux = target.nextInst();
                         for (int i = 0; i < valcount; i++)
@@ -1119,54 +1119,44 @@ public class Luauni : MonoBehaviour
                     break;
                 case LuauOpcode.LOP_SETTABLE:
                     {
-                        dynamic idx = currentProto.registers[Luau.INSN_C(inst)];
+                        object idx = currentProto.registers[Luau.INSN_C(inst)];
                         Type t = idx.GetType();
-                        Logging.Debug(t);
+                        //Logging.Debug(t);
                         if (t == typeof(string))
                         {
-                            ((Dictionary<string, dynamic>)currentProto.registers[Luau.INSN_B(inst)])[(string)idx] = currentProto.registers[Luau.INSN_A(inst)];
+                            ((Dictionary<string, object>)currentProto.registers[Luau.INSN_B(inst)])[(string)idx] = currentProto.registers[Luau.INSN_A(inst)];
                         }
                         else
                         {
-                            int index = Convert.ToInt32((t != typeof(Int32)) ? (double)idx : idx) - 1;
-                            dynamic[] src = (dynamic[])currentProto.registers[Luau.INSN_B(inst)];
+                            int index = Convert.ToInt32((t != typeof(Int32)) ? (double)idx : idx);
+                            object[] src = (object[])currentProto.registers[Luau.INSN_B(inst)];
                             int len = src.Length;
-                            if (len < index + 1) {
-                                dynamic[] nw = new dynamic[index + 1];
+                            if (len < index) {
+                                object[] nw = new object[index];
                                 Array.Copy(src, 0, nw, 0, len);
-                                currentProto.registers[Luau.INSN_B(inst)] = nw;
+                                src = nw;
                             }
-                            ((dynamic[])currentProto.registers[Luau.INSN_B(inst)])[index] = currentProto.registers[Luau.INSN_A(inst)];
+                            src[index - 1] = currentProto.registers[Luau.INSN_A(inst)];
+                            currentProto.registers[Luau.INSN_B(inst)] = src;
                         }
                     }
                     break;
                 case LuauOpcode.LOP_SETTABLEKS:
                     {
                         string key = (string)currentProto.k[target.nextInst()];
-                        Logging.Debug($"SETTABLEKS key: {key}", "Luauni:Step");
-                        dynamic tgt = currentProto.registers[Luau.INSN_B(inst)];
+                        //Logging.Debug($"SETTABLEKS key: {key}", "Luauni:Step");
+                        object tgt = currentProto.registers[Luau.INSN_B(inst)];
                         if (tgt == null)
                         {
                             Logging.Error($"Attempt to index nil with {key}", "Luauni:Step"); target.complete = true; yield break;
                         }
-                        dynamic reg = currentProto.registers[Luau.INSN_A(inst)];
+                        object reg = currentProto.registers[Luau.INSN_A(inst)];
                         Type t = Misc.SafeType(tgt);
-                        Logging.Debug(t);
-                        Logging.Debug(tgt);
-                        if (t == typeof(NamedDict))
+                        //Logging.Debug(t);
+                        //Logging.Debug(tgt);
+                        if (t == typeof(Dictionary<string, object>))
                         {
-                            NamedDict nd = (NamedDict)tgt;
-                            if (nd.dict.TryGetValue(key, out dynamic val))
-                            {
-                                nd.dict[key] = reg;
-                            }
-                            else
-                            {
-                                nd.dict.Add(key, reg);
-                            }
-                        } else if (t == typeof(Dictionary<string, dynamic>))
-                        {
-                            Dictionary<string, dynamic> arr = (Dictionary<string, dynamic>)tgt;
+                            Dictionary<string, object> arr = (Dictionary<string, object>)tgt;
                             if (arr.ContainsKey(key))
                             {
                                 arr[key] = reg;
@@ -1207,18 +1197,18 @@ public class Luauni : MonoBehaviour
                     }
                 case LuauOpcode.LOP_SETTABLEN:
                     {
-                        dynamic rg = currentProto.registers[Luau.INSN_B(inst)];
+                        object rg = currentProto.registers[Luau.INSN_B(inst)];
                         Type t = Misc.SafeType(rg);
-                        if (t == typeof(dynamic[]))
+                        if (t == typeof(object[]))
                         {
-                            dynamic[] arr = (dynamic[])rg;
-                            int index = Convert.ToInt32(Luau.INSN_C(inst)) - 1;
+                            object[] arr = (object[])rg;
+                            int index = Convert.ToInt32(Luau.INSN_C(inst));
                             if (arr.Length <= index)
                             {
-                                Logging.Debug("Array extension required", "Luauni:Step");
-                                dynamic[] newarr = new dynamic[index+1];
+                                //Logging.Debug("Array extension required", "Luauni:Step");
+                                object[] newarr = new object[index+1];
                                 int a = 0;
-                                foreach(dynamic i in arr)
+                                foreach(object i in arr)
                                 {
                                     newarr[a] = i;
                                     a++;
@@ -1244,7 +1234,7 @@ public class Luauni : MonoBehaviour
                         {
                             Logging.Error($"Cannot SETUPVAL because index is outside the range of loaded upvalues.", "Luauni:Step"); target.complete = true; yield break;
                         }
-                        dynamic upvalue = cl.upvals[idx];
+                        object upvalue = cl.upvals[idx];
                         if (upvalue.GetType() == typeof(UpvalREF))
                         {
                             UpvalREF refer = (UpvalREF)upvalue;

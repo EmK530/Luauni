@@ -23,21 +23,20 @@ public class Workspace : MonoBehaviour
     {
         get { return Time.realtimeSinceStartupAsDouble; }
     }
-    private static double _gravity = 196.2;
     public static double Gravity
     {
-        get { return _gravity; }
+        get { return (double)Physics.gravity.y; }
         set
         {
-            _gravity = value;
             Physics.gravity = new Vector3(0, (float)value, 0);
         }
     }
     public static Camera CurrentCamera;
 
+    //missing: whitelist
     public static IEnumerator FindPartsInRegion3WithWhiteList(CallData dat) {
         object[] inp = Luau.getAllArgs(ref dat);
-        Logging.Debug("FindPartsInRegion3WithWhiteList call: " + inp.ToString(), "Workspace");
+        //Logging.Debug("FindPartsInRegion3WithWhiteList call: " + inp.ToString(), "Workspace");
         Region3 region = (Region3)inp[1];
         RaycastHit[] hits = Physics.BoxCastAll((region.max + region.min)/2, (region.max - region.min)/2, UnityEngine.Vector3.forward);
         List<object> parts = new List<object>();
@@ -49,10 +48,29 @@ public class Workspace : MonoBehaviour
         Luau.returnToProto(ref dat, new object[1] { parts.ToArray() });
         yield break;
     }
-    
+
+    //missing: ignorelist
+    public static IEnumerator FindPartsInRegion3WithIgnoreList(CallData dat)
+    {
+        object[] inp = Luau.getAllArgs(ref dat);
+        //Logging.Debug("FindPartsInRegion3WithIgnoreList call: " + inp.ToString(), "Workspace");
+        Region3 region = (Region3)inp[1];
+        RaycastHit[] hits = Physics.BoxCastAll((region.max + region.min) / 2, (region.max - region.min) / 2, UnityEngine.Vector3.forward);
+        List<object> parts = new List<object>();
+        foreach (var hit in hits)
+        {
+            if (hit.transform.gameObject.tag == "Part" || hit.transform.gameObject.tag == "MeshPart")
+            {
+                parts.Add(Misc.TryGetType(hit.transform));
+            }
+        }
+        Luau.returnToProto(ref dat, new object[1] { parts.ToArray() });
+        yield break;
+    }
+
     public static IEnumerator FindPartOnRayWithIgnoreList(CallData dat) {
         object[] inp = Luau.getAllArgs(ref dat);
-        Logging.Debug("FindPartOnRayWithIgnoreList call: " + inp.ToString(), "Workspace");
+        //Logging.Debug("FindPartOnRayWithIgnoreList call: " + inp.ToString(), "Workspace");
         Ray ray = (Ray)inp[1];
         RaycastHit hit;
         if (Physics.Raycast(ray.Origin, ray.Direction, out hit)) {

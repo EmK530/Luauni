@@ -51,9 +51,37 @@ public class Part : MonoBehaviour
         set
         {
             if (mr == null) { mr = GetComponent<MeshRenderer>(); }
-            mr.material.SetColor("_BaseColor", new Color(value.r, value.g, value.b));
+            _color = new Color(value.r, value.g, value.b, 1f - (float)_transparency);
+            mr.material.SetColor("_BaseColor", _color);
         }
     }
+
+    [SerializeField]
+    private double _transparency = 0;
+    public double Transparency
+    {
+        get { return _transparency; }
+        set
+        {
+            _transparency = value;
+            if (mr == null) { mr = GetComponent<MeshRenderer>(); }
+            if (value == 0)
+            {
+                mr.material.DisableKeyword("_SURFACE_TYPE_TRANSPARENT");
+                mr.material.EnableKeyword("_SURFACE_TYPE_OPAQUE");
+            }
+            else
+            {
+                mr.material.EnableKeyword("_SURFACE_TYPE_TRANSPARENT");
+                mr.material.DisableKeyword("_SURFACE_TYPE_OPAQUE");
+            }
+            mr.material.SetInt("_Surface", ((float)value) == 0f ? 0 : 1);
+            Color c = mr.material.GetColor("_BaseColor");
+            _color = new Color(c.r, c.g, c.b, 1f - (float)_transparency);
+            mr.material.SetColor("_BaseColor", _color);
+        }
+    }
+
     public CFrame CFrame
     {
         get
@@ -79,6 +107,18 @@ public class Part : MonoBehaviour
         set
         {
             gameObject.name = value;
+        }
+    }
+
+    public Vector3 Position
+    {
+        get
+        {
+            return transform.position;
+        }
+        set
+        {
+            transform.position = value;
         }
     }
 
@@ -262,5 +302,11 @@ public class Part : MonoBehaviour
         GetComponent<MeshFilter>().sharedMesh = cube.GetComponent<MeshFilter>().sharedMesh;
         DestroyImmediate(cube);
         return true;
+    }
+
+    public IEnumerator GetMass(CallData dat)
+    {
+        Luau.returnToProto(ref dat, new object[1] { (double)rb.mass });
+        yield break;
     }
 }

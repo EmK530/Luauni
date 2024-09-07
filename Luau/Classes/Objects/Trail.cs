@@ -1,17 +1,21 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Security.Permissions;
+using System.Xml;
+using Unity.VisualScripting;
 using UnityEngine;
-using UnityEngine.Events;
 
-public class RemoteEvent : MonoBehaviour
+// THIS IS A DUMMY SCRIPT UNTIL TRAIL GETS DEVELOPED
+
+public class Trail : MonoBehaviour
 {
     public static readonly List<Type> _inherits = new List<Type>()
     {
         typeof(Instance)
     };
 
-    public readonly string ClassName = "RemoteEvent";
+    public readonly string ClassName = "Trail";
 
     public string Name
     {
@@ -31,18 +35,11 @@ public class RemoteEvent : MonoBehaviour
         }
     }
 
-    public IEnumerator FireServer(CallData dat)
+    public bool Enabled
     {
-        object[] inp = Luau.getAllArgs(ref dat);
-        //Logging.Debug($"GameObject {name} received FireServer with {inp.Length} args");
-        ServerFired.Invoke(inp);
-        Luau.returnToProto(ref dat, new object[0]);
-        yield break;
+        get { return gameObject.activeSelf; }
+        set { gameObject.SetActive(value); }
     }
-
-    public RBXScriptSignal OnClientEvent = new RBXScriptSignal();
-
-    public UnityEvent<object[]> ServerFired = new UnityEvent<object[]>();
 
     public static bool isObject = true;
 }
